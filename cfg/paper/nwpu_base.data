@@ -1,0 +1,14 @@
+# Paper-compatible NWPU-R base-training profile.
+data = nwpu
+tuning = 0
+profile = paper
+shot = 0
+seed = ${AOFS_SEED}
+novel = data/nwpu_novels.txt
+novelid = 0
+rand = 0
+meta = ${AOFS_BASE_META}
+train = ${AOFS_DATA_ROOT}/training.txt
+valid = ${AOFS_DATA_ROOT}/evaluation.txt
+gpus = 0
+num_workers = 8

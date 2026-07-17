@@ -713,7 +713,7 @@ def read_data_cfg(datacfg):
         line = line.strip()
         if line == '' or line.startswith('#'):
             continue
-        key,value = line.split('=')
+        key,value = line.split('=', 1)
         key = key.strip()
         value = value.strip()
         options[key] = value

@@ -1,0 +1,10 @@
+airplane /workspace/dataset/nwpulist/box_5shot_airplane_train.txt
+ship /workspace/dataset/nwpulist/box_5shot_ship_train.txt
+storage-tank /workspace/dataset/nwpulist/box_5shot_storage-tank_train.txt
+baseball-diamond /workspace/dataset/nwpulist/box_5shot_baseball-diamond_train.txt
+tennis-court /workspace/dataset/nwpulist/box_5shot_tennis-court_train.txt
+basketball-court /workspace/dataset/nwpulist/box_5shot_basketball-court_train.txt
+ground-track-field /workspace/dataset/nwpulist/box_5shot_ground-track-field_train.txt
+harbor /workspace/dataset/nwpulist/box_5shot_harbor_train.txt
+bridge /workspace/dataset/nwpulist/box_5shot_bridge_train.txt
+vehicle /workspace/dataset/nwpulist/box_5shot_vehicle_train.txt

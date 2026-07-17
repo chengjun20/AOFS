@@ -14,11 +14,12 @@ from tqdm import tqdm
 from image import *
 from cfg import cfg
 from util import is_dict
+from aofs.experiment import support_label_path
 import cv2
 
 
 def topath(p):
-    return p.replace('scratch', 'tmp_scratch/basilisk')
+    return p
 
 
 def loadlines(root, checkvalid=True):
@@ -52,7 +53,7 @@ def is_valid(imgpath, withnovel=True):
         bs = np.loadtxt(labpath)
         if bs is not None:
             bs = np.reshape(bs, (-1, 5))
-            clsset = set(bs[:,0].astype(np.int).tolist())
+            clsset = set(bs[:,0].astype(int).tolist())
             if withnovel:
                 # Check whether an image contains base objects
                 if not clsset.isdisjoint(set(cfg.base_ids)):
@@ -97,7 +98,6 @@ def load_metadict(metapath, repeat=1):
 
         metadict = {line[0]: loadlines(line[1]) for line in files}
 
-    pdb.set_trace()
     # Remove base-class images
     for k in metadict.keys():
         if k not in cfg.novel_classes:
@@ -111,7 +111,7 @@ def load_metadict(metapath, repeat=1):
         # Load converted annotations
         bs = np.loadtxt(labpath)
         bs = np.reshape(bs, (-1, 5))
-        bcls = bs[:,0].astype(np.int).tolist()
+        bcls = bs[:,0].astype(int).tolist()
         for ci in set(bcls):
             metacnt[cfg.classes[ci]] += bcls.count(ci)
 
@@ -143,7 +143,7 @@ def build_fewset(imglist, metalist, metacnt, shot, replace=True):
         # Load converted annotations
         bs = np.loadtxt(labpath)
         bs = np.reshape(bs, (-1, 5))
-        bcls = bs[:,0].astype(np.int).tolist()
+        bcls = bs[:,0].astype(int).tolist()
 
         if bs.shape[0] > 3:
             continue
@@ -279,7 +279,7 @@ class listDataset(Dataset):
             bs = np.loadtxt(labpath)
             if bs is not None:
                 bs = np.reshape(bs, (-1, 5))
-                clsset = set(bs[:,0].astype(np.int).tolist())
+                clsset = set(bs[:,0].astype(int).tolist())
                 if not clsset.isdisjoint(set(cfg.base_ids)):
                     return True
         return False
@@ -483,6 +483,8 @@ class MetaDataset(Dataset):
     @staticmethod
     def get_labpath(imgpath, cls_name):
         if cfg.tuning:
+            if getattr(cfg, 'support_root', ''):
+                return support_label_path(cfg.support_root, cls_name, imgpath)
             labpath = imgpath.replace('training/images', 'labels_1c/{}_{}shot'.format(cls_name, cfg.shot)) \
                 .replace('.jpg', '.txt').replace('.png', '.txt')
         else:

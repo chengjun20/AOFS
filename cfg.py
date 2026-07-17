@@ -60,6 +60,10 @@ __C.max_boxes = 50
 __C.tuning = False
 __C.metayolo = True
 __C.repeat = 1
+__C.profile = 'legacy'
+__C.seed = 0
+__C.shot = 0
+__C.support_root = ''
 
 
 def get_ids(root):
@@ -101,6 +105,9 @@ def add_backup(backup, addon):
 def __configure_data(dataopt):
     __C.batch_size = dataopt['batch_size']
     __C.data = dataopt['data']
+    __C.profile = dataopt.get('profile', 'legacy')
+    __C.seed = int(dataopt.get('seed', 0))
+    __C.support_root = dataopt.get('support_root', '')
     if dataopt['data'] == 'dota':
         __C.classes = __C.dota_classes
         # __C.save_interval = 100
@@ -112,13 +119,17 @@ def __configure_data(dataopt):
         # __C.save_interval = 100
 
 
-    if 'tuning' in dataopt:
-        __C.tuning = bool(int(dataopt['tuning']))
+    __C.tuning = bool(int(dataopt.get('tuning', 0)))
+    if __C.tuning:
         __C.max_epoch = int(dataopt['max_epoch']) if 'max_epoch' in dataopt else 500
         __C.repeat = int(dataopt['repeat']) if 'repeat' in dataopt else 100
-
-
-        __C.shot = 0 if not __C.tuning else int(dataopt['meta'].split('.')[0].split('_')[-1].replace('shot', ''))
+        if 'shot' in dataopt:
+            __C.shot = int(dataopt['shot'])
+        else:
+            __C.shot = int(dataopt['meta'].split('.')[0].split('_')[-1].replace('shot', ''))
+    else:
+        __C.shot = int(dataopt.get('shot', 0))
+        __C.repeat = int(dataopt.get('repeat', 1))
 
     # print('save_interval', __C.save_interval)
 

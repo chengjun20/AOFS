@@ -1,0 +1,17 @@
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Native extension build outputs
+build/
+*.egg-info/
+*.so
+*.bak
+
+# Local dataset caches
+*.cache
+
+# Training artifacts and model weights
+runs/
+saved_weights/
+weights/

@@ -58,20 +58,20 @@ def poly2rbox_single(poly):
         width = edge1
         height = edge2
         angle = np.arctan2(
-            np.float(pt2[1] - pt1[1]), np.float(pt2[0] - pt1[0]))
+            float(pt2[1] - pt1[1]), float(pt2[0] - pt1[0]))
     elif edge2 >= edge1:
         width = edge2
         height = edge1
         angle = np.arctan2(
-            np.float(pt4[1] - pt1[1]), np.float(pt4[0] - pt1[0]))
+            float(pt4[1] - pt1[1]), float(pt4[0] - pt1[0]))
 
     if angle > np.pi*3/4:
         angle -= np.pi
     if angle < -np.pi/4:
         angle += np.pi
 
-    x_ctr = np.float(pt1[0] + pt3[0]) / 2
-    y_ctr = np.float(pt1[1] + pt3[1]) / 2
+    x_ctr = float(pt1[0] + pt3[0]) / 2
+    y_ctr = float(pt1[1] + pt3[1]) / 2
     rbox = np.array([x_ctr, y_ctr, width, height, angle])
 
     return rbox
@@ -106,12 +106,12 @@ def poly2rbox_single_v2(poly):
         width = edge1
         height = edge2
         angle = np.arctan2(
-            np.float(pt2[1] - pt1[1]), np.float(pt2[0] - pt1[0]))
+            float(pt2[1] - pt1[1]), float(pt2[0] - pt1[0]))
     elif edge2 >= edge1:
         width = edge2
         height = edge1
         angle = np.arctan2(
-            np.float(pt4[1] - pt1[1]), np.float(pt4[0] - pt1[0]))
+            float(pt4[1] - pt1[1]), float(pt4[0] - pt1[0]))
 
     # if angle > np.pi*3/4:
     #     angle -= np.pi
@@ -119,8 +119,8 @@ def poly2rbox_single_v2(poly):
     #     angle += np.pi
     angle = norm_angle(angle)
 
-    x_ctr = np.float(pt1[0] + pt3[0]) / 2
-    y_ctr = np.float(pt1[1] + pt3[1]) / 2
+    x_ctr = float(pt1[0] + pt3[0]) / 2
+    y_ctr = float(pt1[1] + pt3[1]) / 2
     
     return float(x_ctr), float(y_ctr), float(width), float(height), float(angle)
 
@@ -151,9 +151,9 @@ def poly2rbox_single_v3(poly):
 
         width = max_edge
         height = min_edge
-        angle1 = np.arctan2(np.float(pt2[1] - pt1[1]), np.float(pt2[0] - pt1[0]))
+        angle1 = np.arctan2(float(pt2[1] - pt1[1]), float(pt2[0] - pt1[0]))
         # elif edge2 >= edge1:
-        angle2 = np.arctan2(np.float(pt4[1] - pt1[1]), np.float(pt4[0] - pt1[0]))
+        angle2 = np.arctan2(float(pt4[1] - pt1[1]), float(pt4[0] - pt1[0]))
 
         angle1_norm = norm_angle(angle1)
         angle2_norm = norm_angle(angle2)
@@ -175,17 +175,17 @@ def poly2rbox_single_v3(poly):
             width = edge1
             height = edge2
             final_angle = np.arctan2(
-                np.float(pt2[1] - pt1[1]), np.float(pt2[0] - pt1[0]))
+                float(pt2[1] - pt1[1]), float(pt2[0] - pt1[0]))
         elif edge2 >= edge1:
             width = edge2
             height = edge1
             final_angle = np.arctan2(
-                np.float(pt4[1] - pt1[1]), np.float(pt4[0] - pt1[0]))
+                float(pt4[1] - pt1[1]), float(pt4[0] - pt1[0]))
 
         final_angle = norm_angle(final_angle)
 
-    x_ctr = np.float(pt1[0] + pt3[0]) / 2
-    y_ctr = np.float(pt1[1] + pt3[1]) / 2
+    x_ctr = float(pt1[0] + pt3[0]) / 2
+    y_ctr = float(pt1[1] + pt3[1]) / 2
 
     return float(x_ctr), float(y_ctr), float(width), float(height), float(final_angle)
 

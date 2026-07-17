@@ -390,7 +390,7 @@ class DetectMultiBackend(nn.Module):
             # im = im.resize((192, 320), Image.ANTIALIAS)
             y = self.model.predict({'image': im})  # coordinates are xywh normalized
             box = xywh2xyxy(y['coordinates'] * [[w, h, w, h]])  # xyxy pixels
-            conf, cls = y['confidence'].max(1), y['confidence'].argmax(1).astype(np.float)
+            conf, cls = y['confidence'].max(1), y['confidence'].argmax(1).astype(float)
             y = np.concatenate((box, conf.reshape(-1, 1), cls.reshape(-1, 1)), 1)
         elif self.onnx:  # ONNX
             im = im.cpu().numpy()  # torch to numpy

@@ -25,12 +25,9 @@
 
 - [ ] **Step 1: Add a lightweight loader for the pure function**
 
-Add NumPy and a helper that executes the exact function definition from `val.py` without importing GPU/native-extension dependencies:
+Add a helper that executes the exact dependency-free function definition from `val.py` without importing GPU/native-extension dependencies:
 
 ```python
-import numpy as np
-
-
 def load_val_function(name):
     source = Path("val.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
@@ -46,7 +43,7 @@ def load_val_function(name):
         raise AssertionError(f"{name} is missing from val.py")
     module = ast.Module(body=[function], type_ignores=[])
     ast.fix_missing_locations(module)
-    namespace = {"np": np}
+    namespace = {}
     exec(compile(module, "val.py", "exec"), namespace)
     return namespace[name]
 ```
@@ -59,15 +56,15 @@ Add this method to `ValidationContractTest`:
 def test_target_count_does_not_depend_on_true_positives(self):
     count_targets = load_val_function("count_targets_per_class")
     stats = [
-        np.zeros((2, 10), dtype=bool),
-        np.array([0.2, 0.1]),
-        np.array([1, 4]),
-        np.array([1, 4, 4]),
+        [[False] * 10, [False] * 10],
+        [0.2, 0.1],
+        [1, 4],
+        [1, 4, 4],
     ]
 
     counts = count_targets(stats, nc=5)
 
-    np.testing.assert_array_equal(counts, np.array([0, 1, 0, 0, 2]))
+    self.assertEqual(counts, [0, 1, 0, 0, 2])
 ```
 
 - [ ] **Step 3: Add the empty-stats regression test**
@@ -80,7 +77,7 @@ def test_target_count_is_fixed_length_when_stats_are_empty(self):
 
     counts = count_targets([], nc=3)
 
-    np.testing.assert_array_equal(counts, np.zeros(3, dtype=np.int64))
+    self.assertEqual(counts, [0, 0, 0])
 ```
 
 - [ ] **Step 4: Run the focused test and verify RED**
@@ -107,9 +104,11 @@ Insert after `process_batch` and before `run`:
 ```python
 def count_targets_per_class(stats, nc):
     """Count validation targets independently of prediction correctness."""
-    if not len(stats):
-        return np.zeros(nc, dtype=np.int64)
-    return np.bincount(np.asarray(stats[3], dtype=np.int64), minlength=nc)
+    counts = [0] * nc
+    if len(stats):
+        for class_id in stats[3]:
+            counts[int(class_id)] += 1
+    return counts
 ```
 
 - [ ] **Step 2: Decouple label counting from the AP condition**
@@ -131,7 +130,7 @@ with:
 
 ```python
 stats = [np.concatenate(x, 0) for x in zip(*stats)]  # to numpy
-nt = count_targets_per_class(stats, nc)
+nt = np.asarray(count_targets_per_class(stats, nc), dtype=np.int64)
 if len(stats) and stats[0].any():
     tp, fp, p, r, f1, ap, ap_class = ap_per_class(*stats, plot=plots, save_dir=save_dir, names=names)
     ap50, ap = ap[:, 0], ap.mean(1)

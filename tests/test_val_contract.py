@@ -3,6 +3,26 @@ import unittest
 from pathlib import Path
 
 
+def load_val_function(name):
+    source = Path("val.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    function = next(
+        (
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == name
+        ),
+        None,
+    )
+    if function is None:
+        raise AssertionError(f"{name} is missing from val.py")
+    module = ast.Module(body=[function], type_ignores=[])
+    ast.fix_missing_locations(module)
+    namespace = {}
+    exec(compile(module, "val.py", "exec"), namespace)
+    return namespace[name]
+
+
 class ValidationContractTest(unittest.TestCase):
     def test_cli_accepts_prediction_stem(self):
         source = Path("val.py").read_text(encoding="utf-8")
@@ -25,6 +45,26 @@ class ValidationContractTest(unittest.TestCase):
         self.assertIn("override_dataset_root(", source)
         for argument in ("--data-root", "--meta", "--support-root"):
             self.assertIn(f"parser.add_argument('{argument}'", source)
+
+    def test_target_count_does_not_depend_on_true_positives(self):
+        count_targets = load_val_function("count_targets_per_class")
+        stats = [
+            [[False] * 10, [False] * 10],
+            [0.2, 0.1],
+            [1, 4],
+            [1, 4, 4],
+        ]
+
+        counts = count_targets(stats, nc=5)
+
+        self.assertEqual(counts, [0, 1, 0, 0, 2])
+
+    def test_target_count_is_fixed_length_when_stats_are_empty(self):
+        count_targets = load_val_function("count_targets_per_class")
+
+        counts = count_targets([], nc=3)
+
+        self.assertEqual(counts, [0, 0, 0])
 
 
 if __name__ == "__main__":

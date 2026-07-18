@@ -62,6 +62,7 @@
 | 状态 | 路径 | 相对上游的行为变化 | 原因/影响 | 验证状态 |
 |---|---|---|---|---|
 | 本任务 | `docs/superpowers/specs/2026-07-17-aofs-dual-profile-reproduction-design.md` | 上游不存在；新增单仓库 paper/robust 双配置设计、评估口径、测试和验收标准 | 在改代码前冻结范围，防止复现目标与稳健改进混在一起 | 已完成书面自检；等待用户审核 |
+| 本任务 | `docs/superpowers/specs/2026-07-18-validation-label-count-design.md` | 上游不存在；新增零 True Positive 时仍正确统计真实标签的独立修复设计、测试和服务器同步边界 | 固化 CUDA 冒烟测试暴露的验证汇总根因，避免把数据问题与指标显示问题混淆 | 已完成书面自检；等待用户审核 |
 | 本任务 | `docs/superpowers/plans/2026-07-17-aofs-dual-profile-implementation.md` | 上游不存在；新增九阶段、测试先行的双配置实施计划 | 把已通过的设计映射到具体文件、失败测试、实现接口和验证命令 | 已完成计划自检；按 inline execution 执行 |
 | 本任务 | `.gitignore` | 上游不存在；新增 Python 缓存、原生扩展构建目录、数据缓存、训练输出和权重目录忽略规则 | 防止可再生成文件再次污染源代码差异清单；不删除或忽略源代码 | 已核对规则；未忽略 `*.py`、配置、脚本、测试或文档 |
 | 本任务 | `aofs/__init__.py` | 上游不存在；新增 AOFS 复现实验辅助包入口 | 为可测试的配置、抽样、评估和汇总逻辑提供稳定命名空间 | `python -m unittest tests.test_experiment -v` 的 RED 阶段已确认缺少包时失败 |

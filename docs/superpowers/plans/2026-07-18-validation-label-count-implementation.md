@@ -23,7 +23,7 @@
 - Modify: `tests/test_val_contract.py`
 - Test: `tests/test_val_contract.py`
 
-- [ ] **Step 1: Add a lightweight loader for the pure function**
+- [x] **Step 1: Add a lightweight loader for the pure function**
 
 Add a helper that executes the exact dependency-free function definition from `val.py` without importing GPU/native-extension dependencies:
 
@@ -48,7 +48,7 @@ def load_val_function(name):
     return namespace[name]
 ```
 
-- [ ] **Step 2: Add the zero-True-Positive regression test**
+- [x] **Step 2: Add the zero-True-Positive regression test**
 
 Add this method to `ValidationContractTest`:
 
@@ -67,7 +67,7 @@ def test_target_count_does_not_depend_on_true_positives(self):
     self.assertEqual(counts, [0, 1, 0, 0, 2])
 ```
 
-- [ ] **Step 3: Add the empty-stats regression test**
+- [x] **Step 3: Add the empty-stats regression test**
 
 Add this method to `ValidationContractTest`:
 
@@ -80,7 +80,7 @@ def test_target_count_is_fixed_length_when_stats_are_empty(self):
     self.assertEqual(counts, [0, 0, 0])
 ```
 
-- [ ] **Step 4: Run the focused test and verify RED**
+- [x] **Step 4: Run the focused test and verify RED**
 
 Run:
 
@@ -97,7 +97,7 @@ Expected: the existing three tests pass; both new tests fail with `AssertionErro
 - Modify: `val.py:356-364`
 - Test: `tests/test_val_contract.py`
 
-- [ ] **Step 1: Add the pure target-count helper**
+- [x] **Step 1: Add the pure target-count helper**
 
 Insert after `process_batch` and before `run`:
 
@@ -111,7 +111,7 @@ def count_targets_per_class(stats, nc):
     return counts
 ```
 
-- [ ] **Step 2: Decouple label counting from the AP condition**
+- [x] **Step 2: Decouple label counting from the AP condition**
 
 Replace the existing summary block:
 
@@ -137,7 +137,7 @@ if len(stats) and stats[0].any():
     mp, mr, map50, map = p.mean(), r.mean(), ap50.mean(), ap.mean()
 ```
 
-- [ ] **Step 3: Run the focused test and verify GREEN**
+- [x] **Step 3: Run the focused test and verify GREEN**
 
 Run:
 
@@ -147,7 +147,7 @@ python -m unittest tests.test_val_contract -v
 
 Expected: five tests pass, zero failures and zero errors.
 
-- [ ] **Step 4: Run syntax verification**
+- [x] **Step 4: Run syntax verification**
 
 Run:
 
@@ -163,7 +163,7 @@ Expected: exit code 0 and no output.
 - Modify: `MODIFICATIONS_FROM_UPSTREAM.md`
 - Verify: all repository tests
 
-- [ ] **Step 1: Update the modification ledger**
+- [x] **Step 1: Update the modification ledger**
 
 Make these exact ledger updates:
 
@@ -173,7 +173,7 @@ Make these exact ledger updates:
 - Extend the `tests/test_val_contract.py` row to record both new regression cases and the RED/GREEN result.
 - Add a dated verification entry containing the exact focused/full test, `py_compile`, and `git diff --check` results.
 
-- [ ] **Step 2: Run the complete unit-test suite**
+- [x] **Step 2: Run the complete unit-test suite**
 
 Run:
 
@@ -183,7 +183,7 @@ python -m unittest discover -s tests -v
 
 Expected: 46 tests pass, zero failures and zero errors.
 
-- [ ] **Step 3: Check whitespace and scope**
+- [x] **Step 3: Check whitespace and scope**
 
 Run:
 
@@ -195,7 +195,7 @@ git diff -- val.py tests/test_val_contract.py MODIFICATIONS_FROM_UPSTREAM.md
 
 Expected: `git diff --check` exits 0; status lists only the planned implementation and ledger files; the diff contains no AMP, model, loss, hyperparameter, or dataset changes.
 
-- [ ] **Step 4: Commit the verified implementation**
+- [x] **Step 4: Commit the verified implementation**
 
 Run:
 
@@ -213,7 +213,7 @@ Expected: one implementation commit on `aofs-dual-profile`, followed by a clean 
 - Server repository: `/workspace/AOFS_new`
 - Server smoke output: `runs/smoke/nwpu_base_cuda_smoke_fixed`
 
-- [ ] **Step 1: Push the local branch**
+- [x] **Step 1: Push the local branch**
 
 Run locally:
 
@@ -223,7 +223,7 @@ git push origin aofs-dual-profile
 
 Expected: GitHub advances `aofs-dual-profile` to the implementation commit.
 
-- [ ] **Step 2: Fast-forward the clean server clone**
+- [x] **Step 2: Fast-forward the clean server clone**
 
 Run on the server:
 
@@ -238,7 +238,7 @@ python -m unittest tests.test_val_contract -v
 
 Expected: status is clean before pull, pull fast-forwards, the reported commit matches GitHub, and five focused tests pass.
 
-- [ ] **Step 3: Rerun the one-epoch CUDA smoke under the same paper profile**
+- [x] **Step 3: Rerun the one-epoch CUDA smoke under the same paper profile**
 
 Run on an idle GPU:
 
@@ -272,7 +272,7 @@ python train.py \
 
 Expected: training and validation finish; the validation summary reports a nonzero `Labels` count even if P/R/AP remain zero.
 
-- [ ] **Step 4: Verify smoke artifacts before authorizing full training**
+- [x] **Step 4: Verify smoke artifacts before authorizing full training**
 
 Run:
 

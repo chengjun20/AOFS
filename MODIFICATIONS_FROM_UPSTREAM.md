@@ -64,7 +64,7 @@
 | 本任务 | `docs/superpowers/specs/2026-07-17-aofs-dual-profile-reproduction-design.md` | 上游不存在；新增单仓库 paper/robust 双配置设计、评估口径、测试和验收标准 | 在改代码前冻结范围，防止复现目标与稳健改进混在一起 | 已完成书面自检；等待用户审核 |
 | 本任务 | `docs/superpowers/specs/2026-07-18-validation-label-count-design.md` | 上游不存在；新增零 True Positive 时仍正确统计真实标签的独立修复设计、测试和服务器同步边界 | 固化 CUDA 冒烟测试暴露的验证汇总根因，避免把数据问题与指标显示问题混淆 | 已完成书面自检；用户已于 2026-07-18 审核通过 |
 | 本任务 | `docs/superpowers/plans/2026-07-17-aofs-dual-profile-implementation.md` | 上游不存在；新增九阶段、测试先行的双配置实施计划 | 把已通过的设计映射到具体文件、失败测试、实现接口和验证命令 | 已完成计划自检；按 inline execution 执行 |
-| 本任务 | `docs/superpowers/plans/2026-07-18-validation-label-count-implementation.md` | 上游不存在；新增验证标签计数修复的 RED/GREEN、完整回归、GitHub 发布和服务器冒烟验收计划；因本机系统 Python 无 NumPy，执行时将纯计数函数调整为标准库实现，避免为轻量测试引入运行依赖 | 将最小代码修复与服务器同步过程拆成可审计步骤，避免直接手改服务器造成分叉 | 已完成计划自检；用户选择 inline execution；按计划执行 |
+| 本任务 | `docs/superpowers/plans/2026-07-18-validation-label-count-implementation.md` | 上游不存在；新增验证标签计数修复的 RED/GREEN、完整回归、GitHub 发布和服务器冒烟验收计划；因本机系统 Python 无 NumPy，执行时将纯计数函数调整为标准库实现，避免为轻量测试引入运行依赖 | 将最小代码修复与服务器同步过程拆成可审计步骤，避免直接手改服务器造成分叉 | 用户选择 inline execution；全部本地、发布和服务器验收步骤已完成并勾选 |
 | 本任务 | `.gitignore` | 上游不存在；新增 Python 缓存、原生扩展构建目录、数据缓存、训练输出和权重目录忽略规则 | 防止可再生成文件再次污染源代码差异清单；不删除或忽略源代码 | 已核对规则；未忽略 `*.py`、配置、脚本、测试或文档 |
 | 本任务 | `aofs/__init__.py` | 上游不存在；新增 AOFS 复现实验辅助包入口 | 为可测试的配置、抽样、评估和汇总逻辑提供稳定命名空间 | `python -m unittest tests.test_experiment -v` 的 RED 阶段已确认缺少包时失败 |
 | 本任务 | `aofs/experiment.py` | 上游不存在；新增 `.data`/dataset YAML 路径覆盖与所有字符串环境变量解析、训练 epoch 换算、验证时机、实验身份和运行清单辅助函数 | 把会影响复现的决策从 GPU 训练循环中分离；支持 profile 中的 `${AOFS_SEED}` 以及路径变量 | dataset YAML root 和非路径 seed 展开测试均先 RED；`python -m unittest tests.test_experiment -v`：8 项通过 |
@@ -76,7 +76,7 @@
 | 本任务 | `cfg.py` | 作者代码从 meta 文件名推断 shot 且不记录 profile/seed/support 根；现在优先读取显式 `shot` 并保存 profile、seed 和 seed 专属 support 根 | 避免动态输出文件名改变 shot 推断，并隔离不同实验身份 | `python -m unittest tests.test_support_paths tests.test_experiment -v`：10 项通过 |
 | 本任务 | `dataset.py` | 在历史兼容修改基础上，tuning support 标签现在可从 `cfg.support_root/<class>/<image>.txt` 读取，未设置时保留作者路径替换 | 允许 paper/robust 和不同 seed 使用互不覆盖的 support 标签 | support 路由 RED 后，组合测试 10 项通过 |
 | 本任务 | `train.py` | 在历史 DataLoader 修改基础上，新增 profile/stage/dataset/shot/seed/data-root/meta/support-root 与 OBB 验证参数；dataset YAML root 可覆盖；恢复周期/最终验证；按 novel OBB mAP@0.5 或 HBB fitness 选择 `best.pt` 并同步 `best_obb_metrics.json`；checkpoint/manifest 写入实验身份；仅同身份 `--resume` 恢复训练状态；仅 legacy 继续在 `increment_path` 后追加 `_tuning` | 修复最终不验证、验证 loader 缺失、二阶段错误继承状态和论文指标无法选优；新 profile 的命名目录不再因后追加 `_tuning` 绕过自动递增而覆盖 | 主契约 8 项、best 指标及目录后缀契约均先 RED 后 GREEN；语法编译通过，真实 CUDA/OBB 流程留待服务器 |
-| 本任务 | `val.py` | 作者代码只在存在预测时写 JSON，训练内调用会生成不稳定的空 stem 文件，独立验证无法解析可移植 profile，且仅在存在 True Positive 时统计真实标签；现在支持 `prediction_stem`、空预测写 `[]`、非空 COCO 才用 pycocotools、独立验证路径覆盖，并把逐类真实标签计数从 AP 条件中分离 | 保证每轮 OBB 文件命名可预测、无预测类别正确计零，让训练与独立评估共用服务器无关配置，并避免零 True Positive 被误报为 `Labels=0` | 原有输出/路径两轮 RED 后 GREEN；标签计数新增两项先 RED，再由纯函数修复后 GREEN；`python -m unittest tests.test_val_contract -v`：5 项通过 |
+| 本任务 | `val.py` | 作者代码只在存在预测时写 JSON，训练内调用会生成不稳定的空 stem 文件，独立验证无法解析可移植 profile，且仅在存在 True Positive 时统计真实标签；现在支持 `prediction_stem`、空预测写 `[]`、非空 COCO 才用 pycocotools、独立验证路径覆盖，并把逐类真实标签计数从 AP 条件中分离 | 保证每轮 OBB 文件命名可预测、无预测类别正确计零，让训练与独立评估共用服务器无关配置，并避免零 True Positive 被误报为 `Labels=0` | 原有输出/路径两轮 RED 后 GREEN；标签计数新增两项先 RED 再 GREEN；服务器 RTX 3090 CUDA smoke 显示 339 images、1427 base labels，且权重/manifest 齐全 |
 | 本任务 | `tests/__init__.py` | 上游不存在；新增标准库 unittest 测试包标记 | 允许不安装 pytest 时运行回归测试 | 已由 unittest 成功发现测试模块 |
 | 本任务 | `tests/test_experiment.py` | 上游不存在；新增 `.data` 路径/非路径环境变量、dataset YAML root、epoch、`noval` 最终验证、周期验证和 resume 身份测试 | 防止硬编码路径、`${AOFS_SEED}` 未展开、100/500 epoch 混淆及最终不验证 | 初始包缺失、root helper 和 seed 展开均先 RED；GREEN 8 项通过 |
 | 本任务 | `tests/test_obb_eval.py` | 上游不存在；新增 NWPU 映射、缺失类零 AP 分母、非空预测评估、逐类预测/正样本数、CLI 无重依赖及 package-aware polyiou 导入测试 | 固化论文 novel OBB 口径和报告审计字段，避免脚本/训练内扩展导入差异 | 模块、顶层依赖、package 导入和计数分别先 RED；GREEN 7 项通过 |
@@ -147,4 +147,5 @@ git ls-files --others --exclude-standard
 - GREEN 阶段 `python -m unittest tests.test_val_contract -v`：5 项全部通过，0 failure、0 error；`python -m py_compile val.py tests/test_val_contract.py` 退出码 0。
 - 完整回归 `python -m unittest discover -s tests -v`：46 项全部通过，0 failure、0 error。
 - `git diff --check` 退出码 0；工作区差异仅为 `val.py`、`tests/test_val_contract.py`、本修复实施计划和本台账，没有 AMP、模型、损失、超参数或数据文件变化。
-- 真实 CUDA smoke 的非零标签汇总、权重与 manifest 仍需将本提交推送并由服务器 fast-forward 后复验。
+- 服务器 `/workspace/AOFS_new` fast-forward 到 `5e3de8e` 后，`python -m unittest tests.test_val_contract -v` 为 5 项通过；RTX 3090、1024 输入、batch 1 的 1 epoch smoke 完成，验证汇总为 339 images、1427 base labels、P/R/HBB mAP 为 0（从零训练一轮的预期结果），显存日志约 3.73 GB。
+- smoke 产物已核对：`runs/smoke/nwpu_base_cuda_smoke_fixed/weights/best.pt`、`weights/last.pt` 和 `run_manifest.json` 均存在；AMP `FutureWarning` 属于已明确排除在本修复范围外的非阻断提示。

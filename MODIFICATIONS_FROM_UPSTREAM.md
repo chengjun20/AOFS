@@ -63,9 +63,10 @@
 |---|---|---|---|---|
 | 本任务 | `docs/superpowers/specs/2026-07-17-aofs-dual-profile-reproduction-design.md` | 上游不存在；新增单仓库 paper/robust 双配置设计、评估口径、测试和验收标准 | 在改代码前冻结范围，防止复现目标与稳健改进混在一起 | 已完成书面自检；等待用户审核 |
 | 本任务 | `docs/superpowers/specs/2026-07-18-validation-label-count-design.md` | 上游不存在；新增零 True Positive 时仍正确统计真实标签的独立修复设计、测试和服务器同步边界 | 固化 CUDA 冒烟测试暴露的验证汇总根因，避免把数据问题与指标显示问题混淆 | 已完成书面自检；用户已于 2026-07-18 审核通过 |
-| 本任务 | `docs/superpowers/specs/2026-07-20-base-hyperparameter-separation-design.md` | 上游不存在；新增 NWPU Base 专用 `0.937` 与 few-shot `0.999` 分离设计、受控服务器证据、范围和验收标准 | 固化论文文字与作者公开配置冲突的实测结论，避免再次用弱 Base 权重启动九组完整实验 | 已完成书面自检；用户已批准设计方向，等待书面规格审核 |
+| 本任务 | `docs/superpowers/specs/2026-07-20-base-hyperparameter-separation-design.md` | 上游不存在；新增 NWPU Base 专用 `0.937` 与 few-shot `0.999` 分离设计、受控服务器证据、范围和验收标准 | 固化论文文字与作者公开配置冲突的实测结论，避免再次用弱 Base 权重启动九组完整实验 | 已完成书面自检；用户于 2026-07-20 审核通过 |
 | 本任务 | `docs/superpowers/plans/2026-07-17-aofs-dual-profile-implementation.md` | 上游不存在；新增九阶段、测试先行的双配置实施计划 | 把已通过的设计映射到具体文件、失败测试、实现接口和验证命令 | 已完成计划自检；按 inline execution 执行 |
 | 本任务 | `docs/superpowers/plans/2026-07-18-validation-label-count-implementation.md` | 上游不存在；新增验证标签计数修复的 RED/GREEN、完整回归、GitHub 发布和服务器冒烟验收计划；因本机系统 Python 无 NumPy，执行时将纯计数函数调整为标准库实现，避免为轻量测试引入运行依赖 | 将最小代码修复与服务器同步过程拆成可审计步骤，避免直接手改服务器造成分叉 | 用户选择 inline execution；全部本地、发布和服务器验收步骤已完成并勾选 |
+| 本任务 | `docs/superpowers/plans/2026-07-20-base-hyperparameter-separation-implementation.md` | 上游不存在；新增 Base/few-shot stage-specific YAML、RED/GREEN profile 测试、复现文档、台账和完整回归实施步骤 | 把已批准设计落实为不触碰模型代码的最小可审计修改 | 已完成计划自检；等待用户选择执行方式 |
 | 本任务 | `.gitignore` | 上游不存在；新增 Python 缓存、原生扩展构建目录、数据缓存、训练输出和权重目录忽略规则 | 防止可再生成文件再次污染源代码差异清单；不删除或忽略源代码 | 已核对规则；未忽略 `*.py`、配置、脚本、测试或文档 |
 | 本任务 | `aofs/__init__.py` | 上游不存在；新增 AOFS 复现实验辅助包入口 | 为可测试的配置、抽样、评估和汇总逻辑提供稳定命名空间 | `python -m unittest tests.test_experiment -v` 的 RED 阶段已确认缺少包时失败 |
 | 本任务 | `aofs/experiment.py` | 上游不存在；新增 `.data`/dataset YAML 路径覆盖与所有字符串环境变量解析、训练 epoch 换算、验证时机、实验身份和运行清单辅助函数 | 把会影响复现的决策从 GPU 训练循环中分离；支持 profile 中的 `${AOFS_SEED}` 以及路径变量 | dataset YAML root 和非路径 seed 展开测试均先 RED；`python -m unittest tests.test_experiment -v`：8 项通过 |

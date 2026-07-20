@@ -26,7 +26,7 @@ Scope guard: do not modify Python training/evaluation/model code, Pillow compati
 - Modify: `tests/test_profiles.py:43-54`
 - Modify: `MODIFICATIONS_FROM_UPSTREAM.md:86-101,145-151`
 
-- [ ] **Step 1: Add the failing Base-profile test**
+- [x] **Step 1: Add the failing Base-profile test**
 
 Insert this method before `test_profile_hyperparameters_match_the_paper` in `ProfileTest`:
 
@@ -38,7 +38,7 @@ Insert this method before `test_profile_hyperparameters_match_the_paper` in `Pro
         self.assertEqual(values["weight_decay"], 0.0005)
 ```
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run:
 
@@ -48,7 +48,7 @@ python -m unittest tests.test_profiles.ProfileTest.test_base_hyperparameters_mat
 
 Expected: one error with `FileNotFoundError` for `cfg/paper/hyp.base_nwpu.yaml`.
 
-- [ ] **Step 3: Create the minimal Base YAML**
+- [x] **Step 3: Create the minimal Base YAML**
 
 Create `cfg/paper/hyp.base_nwpu.yaml` with the complete validated settings:
 
@@ -88,7 +88,7 @@ cls_theta: 180
 csl_radius: 2.0
 ```
 
-- [ ] **Step 4: Run the Base and few-shot profile tests and verify GREEN**
+- [x] **Step 4: Run the Base and few-shot profile tests and verify GREEN**
 
 Run:
 
@@ -98,7 +98,7 @@ python -m unittest tests.test_profiles -v
 
 Expected: 6 tests pass. The new Base test proves `0.937`, while `test_profile_hyperparameters_match_the_paper` still proves paper and robust few-shot `0.999`.
 
-- [ ] **Step 5: Record Task 1 in the ledger**
+- [x] **Step 5: Record Task 1 in the ledger**
 
 Add this row after `cfg/paper/nwpu_base.data`:
 
@@ -112,7 +112,7 @@ Replace the existing `tests/test_profiles.py` row with:
 | 本任务 | `tests/test_profiles.py` | 上游不存在；新增 profile 身份、500-epoch/禁止提前停止、Base `0.937`、few-shot `0.999`、隔离输出、共享评估及 Bash `{:s}` 模板安全测试；轻量解析避免 PyTorch/PyYAML | 在本机验证服务器配置与 shell 值语义，并防止 Base/few-shot momentum 再次混用 | Base 文件缺失测试先 RED；GREEN 后 profile 共 6 项通过 |
 ```
 
-- [ ] **Step 6: Check and commit Task 1**
+- [x] **Step 6: Check and commit Task 1**
 
 Run:
 
@@ -131,7 +131,7 @@ Expected: whitespace check exits 0; the commit contains only the Base YAML, prof
 - Modify: `docs/AOFS_REPRODUCTION.md:86-120`
 - Modify: `MODIFICATIONS_FROM_UPSTREAM.md:99`
 
-- [ ] **Step 1: Replace the Base-stage explanation and command**
+- [x] **Step 1: Replace the Base-stage explanation and command**
 
 Replace the paragraph immediately below `## 3. Base 阶段` with:
 
@@ -159,7 +159,7 @@ After the `AOFS_BASE_WEIGHT` example, add:
 服务器已验收的用户自训练 checkpoint 位于 `runs/base/nwpu_aofs_s_m0937/weights/best.pt`，对应 epoch 69；该二进制是运行生成物，不提交到 Git。新环境应按上面的规范命令重新生成，已有服务器实验可直接把 `AOFS_BASE_WEIGHT` 指向该文件。
 ```
 
-- [ ] **Step 2: Update the guide row in the ledger**
+- [x] **Step 2: Update the guide row in the ledger**
 
 Replace the `docs/AOFS_REPRODUCTION.md` row with:
 
@@ -167,7 +167,7 @@ Replace the `docs/AOFS_REPRODUCTION.md` row with:
 | 本任务 | `docs/AOFS_REPRODUCTION.md` | 上游不存在；新增同步边界、服务器扩展重建、数据预检、Base `0.937`/few-shot `0.999` 分离、paper/robust 训练、独立 OBB 复评、三 seed 汇总和论文目标 | 给出完整实验的唯一操作路径，并防止已证实偏弱的 Base 参数再次进入九组完整实验 | 已对照当前 CLI/profile/output；Base 独立验证为 HBB mAP@0.5 `0.277`、HBB mAP@0.5:0.95 `0.0979` |
 ```
 
-- [ ] **Step 3: Verify the documented paths and values**
+- [x] **Step 3: Verify the documented paths and values**
 
 Run:
 
@@ -177,7 +177,7 @@ rg -n "hyp\.base_nwpu|hyp\.finetune_nwpu|0\.937|0\.999|0\.277|0\.0886" docs/AOFS
 
 Expected: the Base command references `hyp.base_nwpu.yaml`; the stage-specific momentum values and server evidence are visible.
 
-- [ ] **Step 4: Check and commit Task 2**
+- [x] **Step 4: Check and commit Task 2**
 
 Run:
 
@@ -194,19 +194,19 @@ Expected: whitespace check exits 0 and the commit contains only the guide and it
 **Files:**
 - Modify: `MODIFICATIONS_FROM_UPSTREAM.md:135-151`
 
-- [ ] **Step 1: Run the focused profile suite again**
+- [x] **Step 1: Run the focused profile suite again**
 
 Run `python -m unittest tests.test_profiles -v`.
 
 Expected: 6 tests pass, 0 failures, 0 errors.
 
-- [ ] **Step 2: Run the complete unit-test suite**
+- [x] **Step 2: Run the complete unit-test suite**
 
 Run `python -m unittest discover -s tests -v`.
 
 Expected: 47 tests pass, 0 failures, 0 errors.
 
-- [ ] **Step 3: Parse and compare the three YAML files**
+- [x] **Step 3: Parse and compare the three YAML files**
 
 Run:
 
@@ -246,7 +246,7 @@ cfg/paper/hyp.finetune_nwpu.yaml 0.001 0.999 0.0005
 cfg/robust/hyp.finetune_nwpu.yaml 0.001 0.999 0.0005
 ```
 
-- [ ] **Step 4: Verify unchanged Bash launchers and repository whitespace**
+- [x] **Step 4: Verify unchanged Bash launchers and repository whitespace**
 
 Run on this Windows workspace:
 
@@ -260,7 +260,7 @@ git diff --check HEAD~2
 
 Expected: both commands exit 0 with no error output.
 
-- [ ] **Step 5: Append the actual validation evidence to the ledger**
+- [x] **Step 5: Append the actual validation evidence to the ledger**
 
 Append these bullets to the current validation section:
 
@@ -271,7 +271,7 @@ Append these bullets to the current validation section:
 - Bash 三脚本语法检查与 `git diff --check` 均退出 0；本批次未修改训练、模型、损失、数据或评估代码，也未提交权重和运行目录。
 ```
 
-- [ ] **Step 6: Commit the verified ledger evidence**
+- [x] **Step 6: Commit the verified ledger evidence**
 
 Run:
 

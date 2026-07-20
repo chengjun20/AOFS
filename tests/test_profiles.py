@@ -45,6 +45,12 @@ class ProfileTest(unittest.TestCase):
             self.assertEqual(int(values["max_epoch"]), 50000)
             self.assertEqual(int(values["repeat"]), 100)
 
+    def test_base_hyperparameters_match_validated_author_code(self):
+        values = read_simple_yaml("cfg/paper/hyp.base_nwpu.yaml")
+        self.assertEqual(values["lr0"], 0.001)
+        self.assertEqual(values["momentum"], 0.937)
+        self.assertEqual(values["weight_decay"], 0.0005)
+
     def test_profile_hyperparameters_match_the_paper(self):
         for profile in ("paper", "robust"):
             values = read_simple_yaml(f"cfg/{profile}/hyp.finetune_nwpu.yaml")

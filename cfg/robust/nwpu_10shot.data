@@ -1,0 +1,17 @@
+data = nwpu
+tuning = 1
+profile = robust
+shot = 10
+seed = ${AOFS_SEED}
+novel = data/nwpu_novels.txt
+novelid = 0
+rand = 0
+max_epoch = 50000
+repeat = 100
+dynamic = 0
+train = ${AOFS_DATA_ROOT}/training.txt
+valid = ${AOFS_DATA_ROOT}/evaluation.txt
+meta = ${AOFS_SPLIT_ROOT}/meta.txt
+support_root = ${AOFS_SPLIT_ROOT}/support_labels
+gpus = 0
+num_workers = 8

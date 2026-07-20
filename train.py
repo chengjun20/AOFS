@@ -6,6 +6,7 @@ Usage:
     $ python path/to/train.py --data coco128.yaml --weights yolov5s.pt --img 640
 """
 import argparse
+import json
 import math
 import os
 import random
@@ -54,6 +55,10 @@ from util import read_data_cfg
 from cfg import cfg
 
 from dataset import MetaDataset, build_dataset
+from aofs.experiment import (build_experiment_identity, compute_tuning_epochs, override_dataset_root,
+                             resolve_data_options, should_validate, validate_resume_identity,
+                             write_run_manifest)
+from aofs.obb_eval import evaluate_obb_predictions
 
 LOCAL_RANK = int(os.getenv('LOCAL_RANK', -1))  # https://pytorch.org/docs/stable/elastic/run.html
 RANK = int(os.getenv('RANK', -1))
@@ -66,10 +71,42 @@ def train(hyp, opt, device, callbacks):
         opt.resume, opt.noval, opt.nosave, opt.workers, opt.freeze
 
     data_options = read_data_cfg(datacfg)
+    data_options = resolve_data_options(
+        data_options,
+        data_root=opt.data_root,
+        overrides={
+            'meta': opt.meta,
+            'support_root': opt.support_root,
+            'profile': opt.profile,
+            'shot': opt.shot,
+            'seed': opt.seed,
+        },
+    )
     data_options['batch_size'] = batch_size
     data_options['gpus'] = opt.device
 
     cfg.config_data(data_options)
+
+    opt.profile = cfg.profile
+    opt.dataset_name = opt.dataset_name or data_options['data']
+    opt.shot = cfg.shot
+    opt.seed = cfg.seed
+    opt.meta = data_options['meta']
+    opt.support_root = data_options.get('support_root')
+    experiment_identity = build_experiment_identity(
+        opt.profile, opt.dataset_name, opt.shot, opt.seed, opt.stage
+    )
+    if opt.checkpoint_metric == 'obb_novel_map50':
+        required = {
+            '--dataset-name': opt.dataset_name,
+            '--obb-annopath': opt.obb_annopath,
+            '--obb-imagesetfile': opt.obb_imagesetfile,
+        }
+        missing = [name for name, value in required.items() if not value]
+        if missing:
+            raise ValueError(
+                'OBB checkpoint selection requires ' + ', '.join(missing)
+            )
 
     metadict = data_options['meta']
     # trainlist = data_options['train']
@@ -77,9 +114,10 @@ def train(hyp, opt, device, callbacks):
     num_workers = int(data_options['num_workers'])
 
     # Directories
-    if cfg.tuning:
+    if cfg.tuning and cfg.profile == 'legacy':
         save_dir = save_dir + '_tuning'
     save_dir = Path(save_dir)
+    opt.save_dir = str(save_dir)
 
     w = save_dir / 'weights'  # weights dir
     (w.parent if evolve else w).mkdir(parents=True, exist_ok=True)  # make dir
@@ -97,6 +135,10 @@ def train(hyp, opt, device, callbacks):
             yaml.safe_dump(hyp, f, sort_keys=False)
         with open(save_dir / 'opt.yaml', 'w') as f:
             yaml.safe_dump(vars(opt), f, sort_keys=False)
+        if RANK in [-1, 0]:
+            write_run_manifest(
+                save_dir / 'run_manifest.json', experiment_identity, opt, data_options
+            )
 
     # Loggers
     data_dict = None
@@ -114,15 +156,26 @@ def train(hyp, opt, device, callbacks):
     # Config
     plots = not evolve  # create plots
     cuda = device.type != 'cpu'
-    init_seeds(1 + RANK)
+    init_seeds(opt.seed + 1 + RANK)
     with torch_distributed_zero_first(LOCAL_RANK):
-        data_dict = data_dict or check_dataset(data)  # check if None
+        if data_dict is None:
+            dataset_definition = data
+            if opt.data_root:
+                with open(data, errors='ignore') as dataset_file:
+                    dataset_definition = override_dataset_root(
+                        yaml.safe_load(dataset_file), opt.data_root
+                    )
+            data_dict = check_dataset(dataset_definition)
     train_path, val_path = data_dict['train'], data_dict['val']
 
     if cfg.tuning:
         trainlist = build_dataset(data_options)
         train_path = trainlist
-        max_epochs = int(math.ceil(cfg.max_epoch * 1. // cfg.repeat))
+        max_epochs = compute_tuning_epochs(cfg.max_epoch, cfg.repeat)
+        LOGGER.info(
+            f'Few-shot schedule: max_epoch={cfg.max_epoch}, repeat={cfg.repeat}, '
+            f'training epochs={max_epochs}'
+        )
 
     nc = 1 if single_cls else int(data_dict['nc'])  # number of classes
     names = ['item'] if single_cls and len(data_dict['names']) != 1 else data_dict['names']  # class names
@@ -136,6 +189,8 @@ def train(hyp, opt, device, callbacks):
         with torch_distributed_zero_first(LOCAL_RANK):
             weights = attempt_download(weights)  # download if not found locally
         ckpt = torch.load(weights, map_location=device)  # load checkpoint
+        if resume:
+            validate_resume_identity(experiment_identity, ckpt.get('experiment'))
         # print(ckpt['model'].yaml)
         model = Model(cfg1 or ckpt['model'].yaml1, cfg2 or ckpt['model'].yaml2, ch1=3, ch2=4, nc=nc, anchors=hyp.get('anchors')).to(device)  # create
         exclude = ['anchor'] if (cfg or hyp.get('anchors')) and not resume else []  # exclude keys
@@ -193,7 +248,7 @@ def train(hyp, opt, device, callbacks):
                 f"{len(g0)} weight, {len(g1)} weight (no decay), {len(g2)} bias")
     del g0, g1, g2
 
-    start_epoch, best_fitness = 0, 0.0
+    start_epoch, best_fitness = 0, -float('inf')
     if cfg.tuning:
         start_epoch = 0
         epochs = max_epochs
@@ -211,23 +266,22 @@ def train(hyp, opt, device, callbacks):
     # Resume
     if pretrained:
         # Optimizer
-        if ckpt['optimizer'] is not None:
+        if resume and ckpt['optimizer'] is not None:
             optimizer.load_state_dict(ckpt['optimizer'])
             best_fitness = ckpt['best_fitness']
 
         # EMA
-        if ema and ckpt.get('ema'):
+        if resume and ema and ckpt.get('ema'):
             ema.ema.load_state_dict(ckpt['ema'].float().state_dict())
             ema.updates = ckpt['updates']
 
         # Epochs
-        if not cfg.tuning or resume:
-            start_epoch = ckpt['epoch'] + 1
         if resume:
+            start_epoch = ckpt['epoch'] + 1
             assert start_epoch > 0, f'{weights} training to {epochs} epochs is finished, nothing to resume.'
-        if epochs < start_epoch:
-            LOGGER.info(f"{weights} has been trained for {ckpt['epoch']} epochs. Fine-tuning for {epochs} more epochs.")
-            epochs += ckpt['epoch']  # finetune additional epochs
+            if epochs < start_epoch:
+                LOGGER.info(f"{weights} has been trained for {ckpt['epoch']} epochs. Fine-tuning for {epochs} more epochs.")
+                epochs += ckpt['epoch']  # finetune additional epochs
 
         del ckpt, csd
 
@@ -264,23 +318,12 @@ def train(hyp, opt, device, callbacks):
 
     # Process 0
     if RANK in [-1, 0]:
-        # val_loader = create_dataloader(val_path, imgsz, batch_size // WORLD_SIZE * 2, gs, names, single_cls,
-        #                                hyp=hyp, cache=None if noval else opt.cache, rect=False, rank=-1,
-        #                                workers=workers, pad=0.5,
-        #                                prefix=colorstr('val: '))[0]
-        # metaset_val = MetaDataset(metafiles=metadict, imgsz=imgsz, train=True, ensemble=True, with_ids=True)
-
-        # results, maps, _ = val.run(data_dict,
-        #                            batch_size=batch_size // WORLD_SIZE * 2,
-        #                            imgsz=imgsz,
-        #                            model=ema.ema,
-        #                            single_cls=single_cls,
-        #                            dataloader=val_loader,
-        #                            metaset=metaset_val,
-        #                            meta_workers=num_workers,
-        #                            save_dir=save_dir,
-        #                            plots=False,
-        #                            callbacks=callbacks)
+        val_loader = create_dataloader(val_path, imgsz, batch_size // WORLD_SIZE * 2, gs, names, single_cls,
+                                       hyp=hyp, cache=None, rect=False, rank=-1,
+                                       workers=workers, pad=0.5,
+                                       prefix=colorstr('val: '))[0]
+        metaset_val = MetaDataset(metafiles=metadict, imgsz=imgsz, train=False,
+                                  ensemble=True, with_ids=True)
 
         if not resume:
             labels = np.concatenate(dataset.labels, 0)  # labels(array): (all_images_gt_num, [cls_id, poly])
@@ -320,6 +363,7 @@ def train(hyp, opt, device, callbacks):
     last_opt_step = -1
     maps = np.zeros(nc)  # mAP per class
     results = (0, 0, 0, 0, 0, 0, 0, 0)  # P, R, mAP@.5, mAP@.5-.95, val_loss(box, obj, cls, theta)
+    last_obb_metrics = None
     scheduler.last_epoch = start_epoch - 1  # do not move
     scaler = amp.GradScaler(enabled=cuda)
     stopper = EarlyStopping(patience=opt.patience)
@@ -358,7 +402,11 @@ def train(hyp, opt, device, callbacks):
             ni = i + nb * epoch  # number integrated batches (since train start)
             imgs = imgs.to(device, non_blocking=True).float() / 255  # uint8 to float32, 0-255 to 0.0-1.0
 
-            metax, mask = metaloader.next()
+            try:
+                metax, mask = next(metaloader)
+            except StopIteration:
+                metaloader = iter(torch.utils.data.DataLoader(metaset, batch_size=metaset.batch_size, shuffle=False, num_workers=num_workers, pin_memory=True))
+                metax, mask = next(metaloader)
             metax = metax.to(device, non_blocking=True).float() / 255
             mask = mask.to(device, non_blocking=True).float()
 
@@ -424,8 +472,12 @@ def train(hyp, opt, device, callbacks):
             # mAP
             callbacks.run('on_train_epoch_end', epoch=epoch)
             ema.update_attr(model, include=['yaml', 'nc', 'hyp', 'names', 'stride', 'class_weights'])
-            final_epoch = (epoch + 1 == epochs) or stopper.possible_stop
-            if not noval or final_epoch:  # Calculate mAP
+            final_epoch = epoch + 1 == epochs
+            validate_now = should_validate(epoch, epochs, noval, opt.val_period)
+            improved = False
+            fi = best_fitness if math.isfinite(best_fitness) else 0.0
+            if validate_now:  # Calculate HBB metrics and, when requested, paper-compatible OBB AP
+                prediction_stem = f'epoch_{epoch:04d}'
                 results, maps, _ = val.run(data_dict,
                                            batch_size=batch_size // WORLD_SIZE * 2,
                                            imgsz=imgsz,
@@ -435,22 +487,40 @@ def train(hyp, opt, device, callbacks):
                                            metaset=metaset_val,
                                            meta_workers=num_workers,
                                            save_dir=save_dir,
+                                           save_json=opt.checkpoint_metric == 'obb_novel_map50',
+                                           prediction_stem=prediction_stem,
                                            plots=False,
                                            callbacks=callbacks,
                                            compute_loss=compute_loss)
-
-            # Update best mAP
-            fi = fitness(np.array(results).reshape(1, -1))  # weighted combination of [P, R, mAP@.5, mAP@.5-.95]
-            if fi > best_fitness:
-                best_fitness = fi
+                if opt.checkpoint_metric == 'obb_novel_map50':
+                    obb_metrics = evaluate_obb_predictions(
+                        save_dir / f'{prediction_stem}_obb_predictions.json',
+                        opt.obb_annopath,
+                        opt.obb_imagesetfile,
+                        opt.dataset_name,
+                        output_dir=save_dir / f'obb_epoch_{epoch:04d}',
+                    )
+                    last_obb_metrics = obb_metrics
+                    fi = float(obb_metrics['novel_map50'])
+                else:
+                    fi = float(fitness(np.array(results).reshape(1, -1))[0])
+                improved = fi > best_fitness
+                if improved:
+                    best_fitness = fi
+                    if last_obb_metrics is not None:
+                        (save_dir / 'best_obb_metrics.json').write_text(
+                            json.dumps(last_obb_metrics, indent=2, sort_keys=True),
+                            encoding='utf-8',
+                        )
             log_vals = list(mloss) + list(results) + lr
             callbacks.run('on_fit_epoch_end', log_vals, epoch, best_fitness, fi)
 
             # Save model
-            # if (not nosave) or (final_epoch and not evolve):  # if save
-            if not nosave:  # if save
+            if (not nosave) or (final_epoch and not evolve):  # save final even with --nosave
                 ckpt = {'epoch': epoch,
                         'best_fitness': best_fitness,
+                        'experiment': experiment_identity,
+                        'obb_metrics': last_obb_metrics,
                         'model': deepcopy(de_parallel(model)).half(),
                         'ema': deepcopy(ema.ema).half(),
                         'updates': ema.updates,
@@ -463,7 +533,7 @@ def train(hyp, opt, device, callbacks):
                 if (epoch % 25 == 0):
                     torch.save(ckpt, w / '{}.pt'.format(epoch))
                 torch.save(ckpt, last)
-                if best_fitness == fi:
+                if improved:
                     torch.save(ckpt, best)
                 if (epoch > 0) and (opt.save_period > 0) and (epoch % opt.save_period == 0):
                     torch.save(ckpt, w / f'epoch{epoch}.pt')
@@ -471,7 +541,7 @@ def train(hyp, opt, device, callbacks):
                 callbacks.run('on_model_save', last, epoch, final_epoch, best_fitness, fi)
 
             # Stop Single-GPU
-            if RANK == -1 and stopper(epoch=epoch, fitness=fi):
+            if RANK == -1 and validate_now and stopper(epoch=epoch, fitness=fi):
                 break
 
             # Stop DDP TODO: known issues shttps://github.com/ultralytics/yolov5/pull/4576
@@ -524,6 +594,22 @@ def parse_opt(known=False):
     parser.add_argument('--data', type=str, default=ROOT / 'data/dotav15_poly.yaml.yaml', help='dataset.yaml path')
     parser.add_argument('--cfgdata', type=str, default=ROOT / 'cfg/fewyolov5_dota.data', help='datacfg .data path')
     parser.add_argument('--hyp', type=str, default=ROOT / 'data/hyps/obb/hyp.finetune_dota.yaml', help='hyperparameters path')
+    parser.add_argument('--profile', choices=('paper', 'robust', 'legacy'), default=None,
+                        help='experiment profile; profile files normally provide this value')
+    parser.add_argument('--stage', choices=('base', 'fewtune'), default='fewtune', help='training stage identity')
+    parser.add_argument('--dataset-name', choices=('nwpu', 'dior'), default=None, help='evaluation class registry')
+    parser.add_argument('--shot', type=int, default=None, help='explicit few-shot instance count')
+    parser.add_argument('--seed', type=int, default=None, help='experiment and split seed')
+    parser.add_argument('--data-root', type=str, default=None, help='portable dataset root override')
+    parser.add_argument('--meta', type=str, default=None, help='seed-specific meta dictionary override')
+    parser.add_argument('--support-root', type=str, default=None, help='seed-specific support label root')
+    parser.add_argument('--val-period', type=int, default=10, help='validate every N epochs; final epoch is always validated')
+    parser.add_argument('--checkpoint-metric', choices=('hbb_fitness', 'obb_novel_map50'), default='hbb_fitness',
+                        help='metric used to select best.pt')
+    parser.add_argument('--obb-annopath', type=str, default=None,
+                        help='polygon ground-truth template, e.g. /data/labelTxt/{:s}.txt')
+    parser.add_argument('--obb-imagesetfile', type=str, default=None,
+                        help='evaluation image-id list for polygon AP')
     parser.add_argument('--epochs', type=int, default=300)
     parser.add_argument('--batch-size', type=int, default=1, help='total batch size for all GPUs, -1 for autobatch')
     parser.add_argument('--imgsz', '--img', '--img-size', type=int, default=1024, help='train, val image size (pixels)')
@@ -577,6 +663,16 @@ def main(opt, callbacks=Callbacks()):
         with open(Path(ckpt).parent.parent / 'opt.yaml', errors='ignore') as f:
             opt = argparse.Namespace(**yaml.safe_load(f))  # replace
         opt.cfg1, opt.cfg2, opt.weights, opt.resume = '', '', ckpt, True  # reinstate
+        resume_defaults = {
+            'profile': 'legacy', 'stage': 'fewtune', 'dataset_name': None,
+            'shot': None, 'seed': None, 'data_root': None, 'meta': None,
+            'support_root': None, 'val_period': 10,
+            'checkpoint_metric': 'hbb_fitness', 'obb_annopath': None,
+            'obb_imagesetfile': None,
+        }
+        for name, value in resume_defaults.items():
+            if not hasattr(opt, name):
+                setattr(opt, name, value)
         print_args('resume', opt)
         LOGGER.info(f'Resuming training from {ckpt}')
     else:

@@ -8,16 +8,18 @@ import re
 import xml.etree.ElementTree as ET
 import os
 # import cPickle
-import numpy as np
-import matplotlib.pyplot as plt
-import polyiou
 from functools import partial
 import argparse
 import json
 import re
+import sys
+from pathlib import Path
 
-from tqdm import tqdm
-import shutil
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
+
+from aofs.obb_eval import evaluate_obb_predictions
 
 
 def parse_gt(filename):
@@ -60,6 +62,8 @@ def voc_ap(rec, prec, use_07_metric=False):
     If use_07_metric is true, uses the
     VOC 07 11 point method (default:False).
     """
+    import numpy as np
+
     if use_07_metric:
         # 11 point metric
         ap = 0.
@@ -113,6 +117,9 @@ def voc_eval(detpath,
     [use_07_metric]: Whether to use VOC07's 11 point AP computation
         (default False)
     """
+    import numpy as np
+    from DOTA_devkit import polyiou
+
     # assumes detections are in detpath.format(classname)
     # assumes annotations are in annopath.format(imagename)
     # assumes imagesetfile is a text file with each line an image name
@@ -283,114 +290,28 @@ def image2txt(srcpath, dstpath):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='MMDet test (and eval) a model')
-    parser.add_argument('--base_path', default='', help='test json file path')
-    parser.add_argument('--annopath', default='', help='checkpoint file')
-    parser.add_argument('--imagesetfile', default='', help='checkpoint file')
+    parser.add_argument('--dataset', required=True, choices=['nwpu', 'dior'], help='dataset class registry')
+    parser.add_argument('--base_path', required=True, help='prediction path without _obb_predictions.json suffix')
+    parser.add_argument('--annopath', required=True, help='annotation template, for example labels/{:s}.txt')
+    parser.add_argument('--imagesetfile', required=True, help='text file containing evaluation image identifiers')
     args = parser.parse_args()
     return args
 
 
 def main():
-    nwpu_classnames = ['airplane', 'ship', 'storage-tank', 'baseball-diamond', 'tennis-court', 'basketball-court',
-                       'ground-track-field', 'harbor', 'bridge', 'vehicle']
-    nwpu_novel_classnames = ['airplane', 'baseball-diamond', 'tennis-court']
-    nwpu_base_classnames = ['ship', 'storage-tank', 'basketball-court', 'ground-track-field', 'harbor', 'bridge', 'vehicle']
-
-    dior_classnames = ['airplane', 'airport', 'baseballfield', 'basketballcourt', 'bridge', 'chimney', 'dam', 'Expressway-Service-area', 'Expressway-toll-station',
-                       'golffield', 'groundtrackfield', 'harbor', 'overpass', 'ship', 'stadium', 'storagetank', 'tenniscourt', 'trainstation', 'vehicle', 'windmill']
-    dior_novel_classnames = ['airplane', 'baseballfield', 'tenniscourt', 'trainstation', 'windmill']
-    dior_base_classnames = ['airport', 'basketballcourt', 'bridge', 'chimney', 'dam', 'Expressway-Service-area', 'Expressway-toll-station',
-                       'golffield', 'groundtrackfield', 'harbor', 'overpass', 'ship', 'stadium', 'storagetank', 'vehicle']
-
-
-    classnames = dior_classnames
-    novel_classnames = nwpu_novel_classnames
-    base_classnames =  nwpu_base_classnames
     args = parse_args()
     base_path = args.base_path
-
     json_file = base_path + '_obb_predictions.json'
     ana_txt_save_path = base_path + '_obb_predictions_Txt'
-
-    detpath = ana_txt_save_path + '/Task1_{:s}.txt'
-    annopath = args.annopath
-    imagesetfile = args.imagesetfile
-
-    if not os.path.exists(ana_txt_save_path):
-        data = json.load(open(json_file, 'r'))
-        os.makedirs(ana_txt_save_path)
-
-        for data_dict in data:
-            img_name = data_dict["file_name"]
-            score = data_dict["score"]
-            poly = data_dict["poly"]
-            classname = classnames[data_dict["category_id"] - 1]  # COCO's category_id start from 1, not 0
-
-            lines = "%s %s %s %s %s %s %s %s %s %s\n" % (
-                img_name, score, poly[0], poly[1], poly[2], poly[3], poly[4], poly[5], poly[6], poly[7])
-            with open(str(ana_txt_save_path + '/Task1_' + classname) + '.txt', 'a') as f:
-                f.writelines(lines)
-            pass
-        print("TestJson to VocClassTxt ----> Done!")
-    else:
-        print("TestJson to VocClassTxt ----> Already!")
-
-    classaps = []
-    map = 0
-    skippedClassCount = 0
-
-    for classname in novel_classnames:
-        print('classname:', classname)
-        detfile = detpath.format(classname)
-        if not (os.path.exists(detfile)):
-            skippedClassCount += 1
-            print('This class is not be detected in your dataset: {:s}'.format(classname))
-            continue
-        rec, prec, ap = voc_eval(detpath,
-                                 annopath,
-                                 imagesetfile,
-                                 classname,
-                                 ovthresh=0.5,
-                                 use_07_metric=True)
-        map = map + ap
-        # print('rec: ', rec, 'prec: ', prec, 'ap: ', ap)
-        print('ap: ', ap)
-        classaps.append(ap)
-
-    map = map / (len(novel_classnames) - skippedClassCount)
-    print('novel_classnames_map:', map)
-    # classaps = 100 * np.array(classaps)
-    # print('classaps: ', novel_classnames)
-    # print('classaps: ', classaps)
-
-    classaps = []
-    map = 0
-    skippedClassCount = 0
-
-    for classname in base_classnames:
-        print('classname:', classname)
-        detfile = detpath.format(classname)
-        if not (os.path.exists(detfile)):
-            skippedClassCount += 1
-            print('This class is not be detected in your dataset: {:s}'.format(classname))
-            continue
-        rec, prec, ap = voc_eval(detpath,
-                                 annopath,
-                                 imagesetfile,
-                                 classname,
-                                 ovthresh=0.5,
-                                 use_07_metric=True)
-        map = map + ap
-        # print('rec: ', rec, 'prec: ', prec, 'ap: ', ap)
-        print('ap: ', ap)
-        classaps.append(ap)
-
-    map = map / (len(base_classnames) - skippedClassCount)
-    print('base_classnames_map:', map)
-    # classaps = 100 * np.array(classaps)
-    # print('classaps: ', base_classnames)
-    # print('classaps: ', classaps)
-
+    metrics = evaluate_obb_predictions(
+        json_file=json_file,
+        annopath=args.annopath,
+        imagesetfile=args.imagesetfile,
+        dataset_name=args.dataset,
+        output_dir=ana_txt_save_path,
+        voc_eval_fn=voc_eval,
+    )
+    print(json.dumps(metrics, indent=2, sort_keys=True))
 
 if __name__ == '__main__':
     main()

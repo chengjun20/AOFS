@@ -15,6 +15,7 @@ from threading import Thread
 
 import numpy as np
 import torch
+import yaml
 from tqdm import tqdm
 
 from utils.rboxs_utils import poly2hbb, rbox2poly
@@ -23,6 +24,7 @@ from util import read_data_cfg
 from cfg import cfg
 
 from dataset import MetaDataset, build_dataset
+from aofs.experiment import override_dataset_root, resolve_data_options
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -95,9 +97,21 @@ def process_batch(detections, labels, iouv):
     return correct
 
 
+def count_targets_per_class(stats, nc):
+    """Count validation targets independently of prediction correctness."""
+    counts = [0] * nc
+    if len(stats):
+        for class_id in stats[3]:
+            counts[int(class_id)] += 1
+    return counts
+
+
 @torch.no_grad()
 def run(data,
         cfgdata=None,
+        data_root=None,
+        meta=None,
+        support_root=None,
         weights=None,  # model.pt path(s)
         batch_size=32,  # batch size
         imgsz=640,  # inference size (pixels)
@@ -113,6 +127,7 @@ def run(data,
         save_hybrid=False,  # save label+prediction hybrid results to *.txt
         save_conf=False,  # save confidences in --save-txt labels
         save_json=False,  # save a COCO-JSON results file
+        prediction_stem=None,  # deterministic OBB JSON filename stem
         project=ROOT / 'runs/val',  # save to project/name
         name='exp',  # save to project/name
         exist_ok=False,  # existing project/name ok, do not increment
@@ -131,6 +146,11 @@ def run(data,
     num_workers = meta_workers
     if not training:
         data_options = read_data_cfg(cfgdata)
+        data_options = resolve_data_options(
+            data_options,
+            data_root=data_root,
+            overrides={'meta': meta, 'support_root': support_root},
+        )
         data_options['batch_size'] = batch_size
         data_options['gpus'] = device
 
@@ -168,7 +188,13 @@ def run(data,
             LOGGER.info(f'Forcing --batch-size 1 square inference shape(1,3,{imgsz},{imgsz}) for non-PyTorch backends')
 
         # Data
-        data = check_dataset(data)  # check
+        dataset_definition = data
+        if data_root:
+            with open(data, errors='ignore') as dataset_file:
+                dataset_definition = override_dataset_root(
+                    yaml.safe_load(dataset_file), data_root
+                )
+        data = check_dataset(dataset_definition)  # check
 
     # Configure
     model.eval()
@@ -337,13 +363,11 @@ def run(data,
 
     # Compute metrics
     stats = [np.concatenate(x, 0) for x in zip(*stats)]  # to numpy
+    nt = np.asarray(count_targets_per_class(stats, nc), dtype=np.int64)
     if len(stats) and stats[0].any():
         tp, fp, p, r, f1, ap, ap_class = ap_per_class(*stats, plot=plots, save_dir=save_dir, names=names)
         ap50, ap = ap[:, 0], ap.mean(1)  # AP@0.5, AP@0.5:0.95
         mp, mr, map50, map = p.mean(), r.mean(), ap50.mean(), ap.mean()
-        nt = np.bincount(stats[3].astype(np.int64), minlength=nc)  # number of targets per class
-    else:
-        nt = torch.zeros(1)
 
     # Print results
     pf = '%25s' + '%11i' * 2 + '%11.3g' * 4  # print format
@@ -369,31 +393,32 @@ def run(data,
         callbacks.run('on_val_end')
 
     # Save JSON
-    if save_json and len(jdict):
+    if save_json:
         w = Path(weights[0] if isinstance(weights, list) else weights).stem if weights is not None else ''  # weights
+        prediction_stem = prediction_stem or w or 'predictions'
         anno_json = str(Path(data.get('path', '../coco')) / 'annotations/instances_val2017.json')  # annotations json
-        pred_json = str(save_dir / f"{w}_obb_predictions.json")  # predictions json
-        LOGGER.info(f'\nEvaluating pycocotools mAP... saving {pred_json}...')
-        with open(pred_json, 'w') as f:
+        pred_json = str(save_dir / f"{prediction_stem}_obb_predictions.json")  # predictions json
+        LOGGER.info(f'\nSaving OBB predictions to {pred_json}...')
+        with open(pred_json, 'w', encoding='utf-8') as f:
             json.dump(jdict, f)
             LOGGER.info('---------------------The hbb and obb results has been saved in json file-----------------------')
 
-        try:  # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipynb
-            check_requirements(['pycocotools'])
-            from pycocotools.coco import COCO
-            from pycocotools.cocoeval import COCOeval
+        if is_coco and jdict:
+            try:  # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipynb
+                check_requirements(['pycocotools'])
+                from pycocotools.coco import COCO
+                from pycocotools.cocoeval import COCOeval
 
-            anno = COCO(anno_json)  # init annotations api
-            pred = anno.loadRes(pred_json)  # init predictions api
-            eval = COCOeval(anno, pred, 'bbox')
-            if is_coco:
+                anno = COCO(anno_json)  # init annotations api
+                pred = anno.loadRes(pred_json)  # init predictions api
+                eval = COCOeval(anno, pred, 'bbox')
                 eval.params.imgIds = [int(Path(x).stem) for x in dataloader.dataset.img_files]  # image IDs to evaluate
-            eval.evaluate()
-            eval.accumulate()
-            eval.summarize()
-            map, map50 = eval.stats[:2]  # update results (mAP@0.5:0.95, mAP@0.5)
-        except Exception as e:
-            LOGGER.info(f'pycocotools unable to run: {e}')
+                eval.evaluate()
+                eval.accumulate()
+                eval.summarize()
+                map, map50 = eval.stats[:2]  # update results (mAP@0.5:0.95, mAP@0.5)
+            except Exception as e:
+                LOGGER.info(f'pycocotools unable to run: {e}')
 
     # Return results
     model.float()  # for training
@@ -411,6 +436,9 @@ def parse_opt():
     parser.add_argument('--data', type=str, default=ROOT / 'data/DroneVehicle_poly.yaml', help='dataset.yaml path')
     parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'runs/train/weights/best.pt', help='model.pt path(s)')
     parser.add_argument('--cfgdata', type=str, default=ROOT / 'cfg/fewyolov5_dota.data', help='datacfg .data path')
+    parser.add_argument('--data-root', type=str, default=None, help='portable dataset root override')
+    parser.add_argument('--meta', type=str, default=None, help='meta dictionary override')
+    parser.add_argument('--support-root', type=str, default=None, help='support label root override')
     parser.add_argument('--batch-size', type=int, default=8, help='batch size')
     parser.add_argument('--imgsz', '--img', '--img-size', type=int, default=1024, help='inference size (pixels)')
     parser.add_argument('--conf-thres', type=float, default=0.01, help='confidence threshold')
@@ -425,6 +453,7 @@ def parse_opt():
     parser.add_argument('--save-hybrid', action='store_true', help='save label+prediction hybrid results to *.txt')
     parser.add_argument('--save-conf', action='store_true', help='save confidences in --save-txt labels')
     parser.add_argument('--save-json', action='store_true', help='save a COCO-JSON results file')
+    parser.add_argument('--prediction-stem', type=str, default=None, help='deterministic OBB JSON filename stem')
     parser.add_argument('--project', default=ROOT / 'runs/val', help='save to project/name')
     parser.add_argument('--name', default='exp', help='save to project/name')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')

@@ -66,7 +66,7 @@
 | 本任务 | `docs/superpowers/specs/2026-07-20-base-hyperparameter-separation-design.md` | 上游不存在；新增 NWPU Base 专用 `0.937` 与 few-shot `0.999` 分离设计、受控服务器证据、范围和验收标准 | 固化论文文字与作者公开配置冲突的实测结论，避免再次用弱 Base 权重启动九组完整实验 | 已完成书面自检；用户于 2026-07-20 审核通过 |
 | 本任务 | `docs/superpowers/plans/2026-07-17-aofs-dual-profile-implementation.md` | 上游不存在；新增九阶段、测试先行的双配置实施计划 | 把已通过的设计映射到具体文件、失败测试、实现接口和验证命令 | 已完成计划自检；按 inline execution 执行 |
 | 本任务 | `docs/superpowers/plans/2026-07-18-validation-label-count-implementation.md` | 上游不存在；新增验证标签计数修复的 RED/GREEN、完整回归、GitHub 发布和服务器冒烟验收计划；因本机系统 Python 无 NumPy，执行时将纯计数函数调整为标准库实现，避免为轻量测试引入运行依赖 | 将最小代码修复与服务器同步过程拆成可审计步骤，避免直接手改服务器造成分叉 | 用户选择 inline execution；全部本地、发布和服务器验收步骤已完成并勾选 |
-| 本任务 | `docs/superpowers/plans/2026-07-20-base-hyperparameter-separation-implementation.md` | 上游不存在；新增 Base/few-shot stage-specific YAML、RED/GREEN profile 测试、复现文档、台账和完整回归实施步骤 | 把已批准设计落实为不触碰模型代码的最小可审计修改 | 已完成计划自检；等待用户选择执行方式 |
+| 本任务 | `docs/superpowers/plans/2026-07-20-base-hyperparameter-separation-implementation.md` | 上游不存在；新增 Base/few-shot stage-specific YAML、RED/GREEN profile 测试、复现文档、台账和完整回归实施步骤 | 把已批准设计落实为不触碰模型代码的最小可审计修改 | 用户选择 inline execution；全部本地实施及验收步骤已完成并勾选 |
 | 本任务 | `.gitignore` | 上游不存在；新增 Python 缓存、原生扩展构建目录、数据缓存、训练输出和权重目录忽略规则 | 防止可再生成文件再次污染源代码差异清单；不删除或忽略源代码 | 已核对规则；未忽略 `*.py`、配置、脚本、测试或文档 |
 | 本任务 | `aofs/__init__.py` | 上游不存在；新增 AOFS 复现实验辅助包入口 | 为可测试的配置、抽样、评估和汇总逻辑提供稳定命名空间 | `python -m unittest tests.test_experiment -v` 的 RED 阶段已确认缺少包时失败 |
 | 本任务 | `aofs/experiment.py` | 上游不存在；新增 `.data`/dataset YAML 路径覆盖与所有字符串环境变量解析、训练 epoch 换算、验证时机、实验身份和运行清单辅助函数 | 把会影响复现的决策从 GPU 训练循环中分离；支持 profile 中的 `${AOFS_SEED}` 以及路径变量 | dataset YAML root 和非路径 seed 展开测试均先 RED；`python -m unittest tests.test_experiment -v`：8 项通过 |
@@ -87,7 +87,7 @@
 | 本任务 | `tests/test_val_contract.py` | 上游不存在；新增 val CLI/函数 prediction stem、空 JSON 保存、独立评估 profile 路径解析，以及零 True Positive/空 stats 的逐类真实标签计数回归测试；通过 AST 执行真实纯函数以避免加载本机缺失的训练依赖 | 防止无检测轮次缺结果、epoch JSON 覆盖、服务器环境变量路径无法用于独立验证，以及有效 GT 被显示为零 | 新增计数测试先因函数缺失出现 2 个预期 failure；最小实现后 GREEN 5 项通过，0 failure、0 error |
 | 本任务 | `tests/test_train_contract.py` | 上游不存在；新增周期验证、活动验证 loader、OBB metric/最佳指标文件、checkpoint 身份、manifest/resume、二阶段状态隔离、dataset root、命名目录和 CLI 参数源码契约 | 在无本机 CUDA 环境下固定训练主流程必须具备的关键集成点 | 8 项主契约、`best_obb_metrics.json` 及命名目录契约均先 RED 后 GREEN |
 | 本任务 | `cfg/paper/nwpu_base.data` | 上游不存在；新增以 `${AOFS_DATA_ROOT}`、`${AOFS_BASE_META}`、`${AOFS_SEED}` 表达的 NWPU paper base-stage 配置 | 为后续服务器 base 训练提供不绑定机器路径的显式身份；full-meta 文件仍需按操作指南生成/指定 | profile 测试覆盖环境变量约定；真实 base 训练留待服务器 |
-| 本任务 | `cfg/paper/hyp.base_nwpu.yaml` | 上游不存在；从作者公开 NWPU 配置独立出 Base-stage 超参数，固定 `lr0=0.001, momentum=0.937, weight_decay=0.0005`，其余损失与增广项保持一致 | 让 Base 完整训练采用服务器验证更优的作者代码动量，同时不改变论文口径的 few-shot fine-tune `momentum=0.999` | 新测试先因文件缺失 RED；新增配置后 `python -m unittest tests.test_profiles -v` 6 项全 GREEN |
+| 本任务 | `cfg/paper/hyp.base_nwpu.yaml` | 上游不存在；新增经服务器完整对照验证的 NWPU Base 专用配置，使用作者公开代码 momentum `0.937`，其余优化器、增广和损失参数保持不变 | 防止 Base 误用论文文字中的 `0.999` 后长期收敛偏弱；不改变 paper/robust few-shot 配置 | profile 测试先 RED 后 GREEN；完整服务器证据见第 5 节 |
 | 本任务 | `cfg/paper/nwpu_3shot.data`、`cfg/paper/nwpu_5shot.data`、`cfg/paper/nwpu_10shot.data` | 上游不存在；新增 paper 3/5/10-shot 配置，显式 `shot/profile/seed/support_root`，并恢复 `max_epoch=50000, repeat=100`（500 epoch） | 恢复论文训练预算，隔离每个 seed 的 support/meta 路径 | profile 文件缺失阶段 5 项测试按预期报错；GREEN 5 项通过 |
 | 本任务 | `cfg/robust/nwpu_3shot.data`、`cfg/robust/nwpu_5shot.data`、`cfg/robust/nwpu_10shot.data` | 上游不存在；新增 robust 3/5/10-shot 配置，与 paper 使用相同训练预算/路径结构但身份独立 | 只把 robust 差异限定在 scene-aware support 抽样，便于与 paper 公平对比 | 同上；GREEN 5 项通过 |
 | 本任务 | `cfg/paper/hyp.finetune_nwpu.yaml` | 上游不存在；从作者 NWPU 配置派生并把 momentum 从代码文件中的 0.937 对齐为论文报告的 0.999；保留 `lr0=0.001, weight_decay=0.0005` 及其余增广/损失项 | 消除历史运行超参数与论文文字口径的偏差 | profile 测试精确检查三项论文超参数并通过 |
@@ -95,7 +95,7 @@
 | 本任务 | `scripts/train_nwpu_paper.sh` | 上游不存在；新增严格 Bash 启动器，生成 paper seed split，以隔离 project、OBB novel metric、完整身份和 `--patience 500` 启动；OBB `{:s}` 默认模板用显式分支赋值 | 固化服务器复现命令，防止提前截断 500 epoch，并避免嵌套 parameter expansion 吃掉模板右花括号 | patience 和模板契约分别先 RED；Git Bash 语法及 xtrace 默认值检查通过 |
 | 本任务 | `scripts/train_nwpu_robust.sh` | 上游不存在；新增同预算 robust 启动器，split 默认每图 1 实例，隔离输出、`--patience 500` 和安全 OBB 模板赋值 | 降低 support 场景集中风险，同时保持 paper 完整预算和正确评估路径 | 同上；Bash 语法检查退出码 0 |
 | 本任务 | `scripts/eval_nwpu_obb.sh` | 上游不存在；新增确定性 split 重建、独立 JSON 导出和共享 NWPU polygon AP 串联；安全生成含 `{:s}` 的默认 annopath | 使用 fixed-denominator novel/base/all OBB mAP@0.5，并避免 Bash 将模板误解析成 `{:s.txt}` | 模板测试先 RED 后 GREEN；Bash 语法检查退出码 0；真实 GPU/扩展留待服务器 |
-| 本任务 | `tests/test_profiles.py` | 上游不存在；新增 profile 身份、500-epoch/禁止提前停止、Base 作者代码超参数、few-shot 论文超参数、隔离输出、共享评估及 Bash `{:s}` 模板安全测试；轻量解析避免 PyTorch/PyYAML | 在本机验证 Base/few-shot 分阶段配置及服务器 shell 值语义 | Base 配置测试先因文件缺失 RED；新增配置后最终 6 项全 GREEN |
+| 本任务 | `tests/test_profiles.py` | 上游不存在；新增 profile 身份、500-epoch/禁止提前停止、Base `0.937`、few-shot `0.999`、隔离输出、共享评估及 Bash `{:s}` 模板安全测试；轻量解析避免 PyTorch/PyYAML | 在本机验证服务器配置与 shell 值语义，并防止 Base/few-shot momentum 再次混用 | Base 文件缺失测试先 RED；GREEN 后 profile 共 6 项通过 |
 | 本任务 | `aofs/results.py` | 上游不存在；新增 OBB 指标与父级 run manifest 严格配对、三 seed 均值/样本标准差汇总及 profile/dataset/shot/stage 混用拒绝 | 让论文 mean ± std 可复算并防止把不同实验组错误合并 | `aofs.results` 缺失阶段测试按预期导入失败；GREEN 3 项通过 |
 | 本任务 | `tools/summarize_obb_runs.py` | 上游不存在；新增接收三个以上 `obb_metrics.json` 和 `--output` 的无重依赖 CLI | 在服务器把每个 run 的最佳 novel OBB 指标汇总为机器可读 JSON | `python tools/summarize_obb_runs.py --help` 退出码 0并列出 metrics/`--output` |
 | 本任务 | `tests/test_results.py` | 上游不存在；新增三 seed 样本标准差、父目录 manifest 发现和混合 profile 拒绝测试 | 固化论文重复实验统计口径与输入身份约束 | RED 为缺失模块；`python -m unittest tests.test_results -v`：3 项通过 |
@@ -152,3 +152,10 @@ git ls-files --others --exclude-standard
 - `git diff --check` 退出码 0；工作区差异仅为 `val.py`、`tests/test_val_contract.py`、本修复实施计划和本台账，没有 AMP、模型、损失、超参数或数据文件变化。
 - 服务器 `/workspace/AOFS_new` fast-forward 到 `5e3de8e` 后，`python -m unittest tests.test_val_contract -v` 为 5 项通过；RTX 3090、1024 输入、batch 1 的 1 epoch smoke 完成，验证汇总为 339 images、1427 base labels、P/R/HBB mAP 为 0（从零训练一轮的预期结果），显存日志约 3.73 GB。
 - smoke 产物已核对：`runs/smoke/nwpu_base_cuda_smoke_fixed/weights/best.pt`、`weights/last.pt` 和 `run_manifest.json` 均存在；AMP `FutureWarning` 属于已明确排除在本修复范围外的非阻断提示。
+
+### 2026-07-20 NWPU Base 超参数分离验收记录
+
+- Base profile RED：新增测试在 `cfg/paper/hyp.base_nwpu.yaml` 缺失时按预期以 `FileNotFoundError` 失败；新增配置后 `python -m unittest tests.test_profiles -v` 为 6 项通过。
+- 完整回归：`python -m unittest discover -s tests -v` 为 47 项通过，0 failure、0 error；三份 YAML 显式解析为 Base `0.937`、paper few-shot `0.999`、robust few-shot `0.999`。
+- 服务器受控实验：当前代码、相同数据和 seed 下，100-epoch Base `0.999` 独立 HBB mAP@0.5/0.5:0.95 为 `0.0886/0.0322`；Base `0.937` 的 epoch-69 `best.pt` 独立复评为 `0.277/0.0979`，产物位于 `runs/base/nwpu_aofs_s_m0937/`。10-epoch 对照中 `0.999` 前期更快，故最终决策依据完整 100-epoch 结果。
+- Bash 三脚本语法检查与 `git diff --check` 均退出 0；本批次未修改训练、模型、损失、数据或评估代码，也未提交权重和运行目录。

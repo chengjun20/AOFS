@@ -87,6 +87,8 @@ export AOFS_BASE_META="$PWD/data/nwpu_traindict_full.txt"
 
 base 阶段只训练一次，随后所有 shot/seed/profile 使用同一个 base checkpoint。这里按 100 epoch 训练，并用 HBB fitness 选择 base checkpoint；论文对比指标仍在 few-shot 阶段使用 novel OBB mAP@0.5。
 
+论文实验设置写明 SGD momentum 为 `0.999`，但作者公开 NWPU 配置使用 `0.937`。同数据、同模型的服务器完整对照中，Base `0.937` 的独立 HBB mAP@0.5 为 `0.277`，而 Base `0.999` 为 `0.0886`。因此 Base 使用独立的 `cfg/paper/hyp.base_nwpu.yaml`；paper/robust few-shot 仍使用 `0.999`，两阶段不得混用。
+
 ```bash
 export AOFS_SEED=0
 export AOFS_BASE_META="$PWD/data/nwpu_traindict_full.txt"
@@ -97,7 +99,7 @@ python train.py \
   --data data/nwpu_poly.yaml \
   --data-root "$AOFS_DATA_ROOT" \
   --cfgdata cfg/paper/nwpu_base.data \
-  --hyp cfg/paper/hyp.finetune_nwpu.yaml \
+  --hyp cfg/paper/hyp.base_nwpu.yaml \
   --profile paper \
   --stage base \
   --dataset-name nwpu \
@@ -117,6 +119,8 @@ python train.py \
 export AOFS_BASE_WEIGHT="$PWD/runs/base/nwpu_aofs_s/weights/best.pt"
 test -f "$AOFS_BASE_WEIGHT"
 ```
+
+服务器已验收的用户自训练 checkpoint 位于 `runs/base/nwpu_aofs_s_m0937/weights/best.pt`，对应 epoch 69；该二进制是运行生成物，不提交到 Git。新环境应按上面的规范命令重新生成，已有服务器实验可直接把 `AOFS_BASE_WEIGHT` 指向该文件。
 
 ## 4. Paper 与 robust 三 seed 训练
 

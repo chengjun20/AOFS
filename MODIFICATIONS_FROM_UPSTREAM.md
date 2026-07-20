@@ -99,7 +99,7 @@
 | 本任务 | `aofs/results.py` | 上游不存在；新增 OBB 指标与父级 run manifest 严格配对、三 seed 均值/样本标准差汇总及 profile/dataset/shot/stage 混用拒绝 | 让论文 mean ± std 可复算并防止把不同实验组错误合并 | `aofs.results` 缺失阶段测试按预期导入失败；GREEN 3 项通过 |
 | 本任务 | `tools/summarize_obb_runs.py` | 上游不存在；新增接收三个以上 `obb_metrics.json` 和 `--output` 的无重依赖 CLI | 在服务器把每个 run 的最佳 novel OBB 指标汇总为机器可读 JSON | `python tools/summarize_obb_runs.py --help` 退出码 0并列出 metrics/`--output` |
 | 本任务 | `tests/test_results.py` | 上游不存在；新增三 seed 样本标准差、父目录 manifest 发现和混合 profile 拒绝测试 | 固化论文重复实验统计口径与输入身份约束 | RED 为缺失模块；`python -m unittest tests.test_results -v`：3 项通过 |
-| 本任务 | `docs/AOFS_REPRODUCTION.md` | 上游不存在；新增同步边界、服务器扩展重建、数据预检、base/paper/robust 训练、独立 OBB 复评、三 seed 汇总、论文目标和服务器验收顺序 | 给出从本地源码到服务器完整实验的唯一操作路径，并明确论文数值在实测前不保证 | 已逐项对照当前 CLI/profile/output 名称；命令级 GPU 验证留待服务器 |
+| 本任务 | `docs/AOFS_REPRODUCTION.md` | 上游不存在；新增同步边界、服务器扩展重建、数据预检、Base `0.937`/few-shot `0.999` 分离、paper/robust 训练、独立 OBB 复评、三 seed 汇总和论文目标 | 给出完整实验的唯一操作路径，并防止已证实偏弱的 Base 参数再次进入九组完整实验 | 已对照当前 CLI/profile/output；Base 独立验证为 HBB mAP@0.5 `0.277`、HBB mAP@0.5:0.95 `0.0979` |
 | 本任务 | `util.py` | `read_data_cfg` 原来对所有 `=` 分割；现在只分割第一个 `=` | 允许配置值安全包含环境变量或带等号的路径值 | `python -m unittest tests.test_experiment -v`：8 项通过 |
 | 本任务 | `MODIFICATIONS_FROM_UPSTREAM.md` | 上游不存在；新增本文档 | 满足所有相对作者源码差异可追踪的要求 | 已用任务开始时的 Git 状态和逐文件 diff 建立初始清单；后续每个补丁同步维护 |
 

@@ -30,7 +30,14 @@ from util import read_data_cfg
 from cfg import cfg
 
 import timm
-from models.lsknet import *
+_LSKNET_MISSING = object()
+try:
+    from models.lsknet import lsknet_t, lsknet_s
+except ModuleNotFoundError as exc:
+    if exc.name != 'models.lsknet':
+        raise
+    lsknet_t = _LSKNET_MISSING
+    lsknet_s = _LSKNET_MISSING
 
 try:
     import thop  # for FLOPs computation
@@ -390,6 +397,11 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             m = timm.create_model(m, pretrained=args[0], features_only=True)
             c2 = m.feature_info.channels()
         elif m in {lsknet_t, lsknet_s}:
+            if m is _LSKNET_MISSING:
+                raise ModuleNotFoundError(
+                    'Model config requests LSKNet backbone but models/lsknet.py is not available. '
+                    'LSKNet source: https://github.com/zcablii/LSKNet'
+                )
             m = m(*args)
             c2 = m.channel
         else:

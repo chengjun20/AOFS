@@ -27,7 +27,7 @@ from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import copy_attr, time_sync
 
 import torchvision.models as tv_models
-from models import lsknet
+# from models import lsknet  # CR: lsknet.py unavailable; not used in this file
 
 def autopad(k, p=None):  # kernel, padding
     # Pad to 'same'

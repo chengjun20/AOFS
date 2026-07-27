@@ -13,6 +13,7 @@
 | M-0002 | 2026-07-28 02:00 UTC+8 | train.py:267-271 | 作者代码残留 | 已完成 | 恢复被注释的 val_loader + metaset_val 初始化 |
 | M-0003 | 2026-07-28 02:15 UTC+8 | models/common.py:30, models/yolo.py:33,392 | 文件缺失 | 已完成 | LSKNet 可选 backbone 缺失保护 |
 | M-0004 | 2026-07-28 03:30 UTC+8 | image.py:221,260 | 作者代码残留 | 已完成 | 注释 fill_truth_detection 中的条件 pdb.set_trace() |
+| M-0005 | 2026-07-28 04:30 UTC+8 | utils/datasets.py | 环境兼容 | 已完成 | 修复新版本 NumPy 兼容问题（np.int→int, 标签拼接显式 float 转换） |
 
 ---
 
@@ -239,5 +240,50 @@ Before（注释状态）→ After（取消注释），参数和缩进完全保�
 
 ---
 
-<!-- 新修改记录请按 M-0005, M-0006 ... 追加在下方 -->
+---
+
+## M-0005
+
+### 基本信息
+
+- 时间：2026-07-28 04:30 UTC+8
+- 对应问题编号：ISSUE-012
+- 修改前/后 Commit：(待提交)
+- Git 分支：reproduction/minimal-fixes
+
+### 修改对象
+
+- 修改文件：utils/datasets.py
+- 修改类型：环境兼容
+
+### 原始问题
+
+- 问题表现：
+  1. `np.int` 在 NumPy >= 1.24 中已弃用，导致 `AttributeError: module 'numpy' has no attribute 'int'`
+  2. `np.concatenate((cls_id, label[:8]), axis=None)` 在 NumPy 新版本中无法拼接 Python int 与字符串数组
+- 服务器是否出现：是
+
+### 修改方案
+
+1. 标签拼接：`np.concatenate(...)` → `[float(cls_id), *map(float, label[:8])]`
+2. `np.int` → `int`（3处）
+
+### 修改内容
+
+4处修改，仅限 utils/datasets.py。
+
+### 影响分析
+
+- 是否改变模型结构/算法逻辑/输入数据/Loss/Optimizer/Scheduler：否
+- 数据标签结构是否改变：否（最终 l=np.array(l_, dtype=np.float32) 结构一致）
+- 与论文一致性：一致
+
+### 验证结果
+
+- 静态检查：`python -m py_compile utils/datasets.py` 通过
+- 服务器测试：待执行
+
+---
+
+<!-- 新修改记录请按 M-0006, M-0007 ... 追加在下方 -->
 

@@ -66,10 +66,27 @@
 
 | 项目 | 论文 | 代码/配置 | 状态 |
 |------|------|----------|------|
-| csl_radius | 待确认 | 超参文件=2.0, 代码默认=4.0 | 待确认 |
-| base training epochs | 待确认 | 100 | 待确认 |
-| 训练用的 loss 权重 | 待确认 | box=0.05, cls=0.5, theta=0.5, obj=1.0 | 待确认 |
-| 角度损失类型 | 待确认 | BCEWithLogitsLoss + CSL 高斯软标签 | 待确认 |
+| momentum | **0.999** (Section IV-B, p.6) | **0.937** (hyp.finetune_*.yaml) | ❌ 不一致 — 记录为"论文描述与公开代码不一致" |
+| csl_radius (σ) | 未明确给出数值 (Equation 2, p.5) | 超参文件=2.0, 函数默认=4.0 | ⚠️ 论文未明确 |
+| loss 权重 | L = Lbox + Lconf + Lcls + Lθ（等权重, Eq.13, p.6） | box=0.05, obj=1.0, cls=0.5, theta=0.5 | ⚠️ 论文描述等权，代码缩放不一致 |
+| DIOR 图像尺寸 | 800×800 (Section IV-A, p.6) | 1024 (diors_poly.yaml 默认) | ⚠️ 待确认实际训练尺寸 |
+| base training epochs | 未明确 | 100 | 待确认 |
+| 优化器 | SGD (Section IV-B, p.6) | SGD | ✅ 一致 |
+| 学习率 | 0.001 (Section IV-B, p.6) | 0.001 | ✅ 一致 |
+| 权重衰减 | 0.0005 (Section IV-B, p.6) | 0.0005 | ✅ 一致 |
+
+### 超参数实验线
+
+#### 实验线 A：论文对齐 (paper-aligned)
+- momentum = 0.999
+- 用途：验证论文文字描述中的实验设置
+- 配置文件：`hyp.finetune_nwpu_paper.yaml`（待创建）
+
+#### 实验线 B：公开代码对齐 (code-aligned)
+- momentum = 0.937
+- 用途：还原作者公开代码的实际配置
+- 已有实验结果显示该设置效果更好
+- 作为后续主要训练候选配置
 
 ---
 
@@ -121,9 +138,9 @@
 - [x] 论文理解
 - [x] 代码结构分析
 - [x] 问题识别（10 个已知问题已记录在 known_issues.md）
+- [x] 阻塞问题修复（M-0001, M-0002, M-0003）
 - [ ] 环境搭建（本地）
 - [ ] 环境搭建（服务器）
-- [ ] 阻塞问题修复
 - [ ] 数据准备
 - [ ] 基础训练复现
 - [ ] Few-Shot 微调复现

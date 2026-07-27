@@ -9,8 +9,8 @@
 
 | 编号 | 优先级 | 类型 | 状态 | 标题 |
 |------|--------|------|------|------|
-| [ISSUE-001](#issue-001) | 🔴 P1 | 文件缺失 | 待分析 | 缺少 `models/lsknet.py` 导致 ImportError |
-| [ISSUE-002](#issue-002) | 🔴 P1 | 作者代码错误 | 待分析 | `train.py` 验证代码被注释但仍在引用 |
+| [ISSUE-001](#issue-001) | 🔴 P1 | 文件缺失 | ✅ 已解决 | 缺少 `models/lsknet.py` 导致 ImportError（M-0003 已处理） |
+| [ISSUE-002](#issue-002) | 🔴 P1 | 作者代码错误 | ✅ 已解决 | `train.py` 验证代码被注释但仍在引用（M-0002 已恢复） |
 | [ISSUE-003](#issue-003) | 🟡 P1 | 作者代码残留 | 部分已解决 | 11 处 `pdb.set_trace()` 调试断点（M-0001 已删除 dataset.py:100） |
 | [ISSUE-004](#issue-004) | 🟡 P1 | 路径硬编码 | 待服务器路径确认 | `dataset.py` 中 `topath()` 硬编码路径 |
 | [ISSUE-005](#issue-005) | 🟡 P2 | 配置 | 待分析 | `train.py` read_data_cfg 格式依赖 |
@@ -28,20 +28,10 @@
 - **标题**：缺少 `models/lsknet.py` 导致 ImportError
 - **优先级**：🔴 P1
 - **类型**：文件缺失
-- **状态**：待分析
-- **涉及文件**：`models/yolo.py:33`
-- **问题表现**：`from models.lsknet import *` 引用不存在的文件，触发 ImportError
-- **原因**：`models/lsknet.py` 不在仓库中；LSKNet 可能是可选 backbone 变体
-- **证据**：
-  - `models/yolo.py:33` 有 import
-  - `models/yolo.py:392` 仅在处理 `lsknet_t` 或 `lsknet_s` 模块类型时才使用
-  - Glob 搜索 `models/lsknet*` 无结果
-- **是否阻塞**：是（Python 在模块导入时会执行顶层 import）
-- **是否影响结果**：否（如果使用 AOFS_s/l.yaml 默认配置，不触发 LSKNet 路径）
-- **推荐方案**：
-  - 方案 A：注释 import 行（如果确认不使用 LSKNet）
-  - 方案 B：寻找缺失文件（可能是 Git 子模块或需单独下载）
-- **关联修改记录**：(待创建)
+- **状态**：✅ 已解决（M-0003）
+- **涉及文件**：`models/yolo.py:33`, `models/yolo.py:392`, `models/common.py:30`
+- **解决方式**：`_LSKNET_MISSING` 哨兵值 + 窄范围 ModuleNotFoundError 捕获 + `common.py` 中未使用的 import 注释
+- **关联修改记录**：M-0003
 - **关联实验记录**：(无)
 
 ---
@@ -51,17 +41,10 @@
 - **标题**：`train.py` 验证代码被注释但仍在引用
 - **优先级**：🔴 P1
 - **类型**：作者代码错误（注释残留）
-- **状态**：待分析
-- **涉及文件**：`train.py:267-283`, `train.py:429-441`
-- **问题表现**：不设置 `--noval` 时，`val_loader` 和 `metaset_val` 未定义，触发 NameError
-- **原因**：验证 dataloader 创建代码（第267-283行）被作者注释掉，但验证调用（第429-441行）仍引用这些变量
-- **证据**：代码比对，`val_loader` / `metaset_val` 仅在被注释的代码块中定义
-- **是否阻塞**：是（除非始终使用 `--noval`）
-- **是否影响结果**：否（如果始终使用 `--noval` 训练）
-- **推荐方案**：
-  - 方案 A：取消注释第267-283行（恢复原始验证逻辑）
-  - 方案 B：在验证调用处加 `if not noval:` 保护
-- **关联修改记录**：(待创建)
+- **状态**：✅ 已解决（M-0002）
+- **涉及文件**：`train.py:267-271`
+- **解决方式**：取消注释恢复作者原始 val_loader + metaset_val 初始化代码
+- **关联修改记录**：M-0002
 - **关联实验记录**：(无)
 
 ---

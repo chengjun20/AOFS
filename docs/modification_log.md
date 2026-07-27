@@ -10,6 +10,8 @@
 | 编号 | 时间 | 文件 | 类型 | 状态 | 摘要 |
 |------|------|------|------|------|------|
 | M-0001 | 2026-07-27 23:50 UTC+8 | dataset.py:100 | 作者代码残留 | 已完成 | 删除无条件 pdb.set_trace() 调试断点 |
+| M-0002 | 2026-07-28 02:00 UTC+8 | train.py:267-271 | 作者代码残留 | 已完成 | 恢复被注释的 val_loader + metaset_val 初始化 |
+| M-0003 | 2026-07-28 02:15 UTC+8 | models/common.py:30, models/yolo.py:33,392 | 文件缺失 | 已完成 | LSKNet 可选 backbone 缺失保护 |
 
 ---
 
@@ -115,5 +117,87 @@
 
 ---
 
-<!-- 新修改记录请按 M-0001, M-0002 ... 追加在下方 -->
+---
+
+## M-0002
+
+### 基本信息
+
+- 时间：2026-07-28 02:00 UTC+8
+- 对应问题编号：ISSUE-002
+- 修改前/后 Commit：501610a → e68850f
+- Git 分支：reproduction/minimal-fixes
+
+### 修改对象
+
+- 修改文件：train.py
+- 修改类型：作者代码残留（被注释的代码）
+
+### 原始问题
+
+- 问题表现：`val_loader` 和 `metaset_val` 初始化代码被作者注释（第267-271行），但 epoch 末尾验证调用（第428-440行）仍引用这些变量，导致 `NameError: val_loader is not defined`
+- 原因：调试遗留
+
+### 修改方案
+
+取消注释恢复作者原始代码，gs 作为第四个位置参数绑定到 stride 形参。
+
+### 修改内容
+
+Before（注释状态）→ After（取消注释），参数和缩进完全保留。
+
+### 影响分析
+
+- 是否改变模型结构/算法逻辑/输入数据/Loss/Optimizer/Scheduler：否
+- 是否影响论文指标：否（恢复作者预期行为）
+- 与论文一致性：一致
+
+### 验证结果
+
+- 静态检查：`python -m py_compile train.py` 通过
+- `inspect.signature().bind()` 参数绑定通过
+- 服务器测试：待执行
+
+---
+
+## M-0003
+
+### 基本信息
+
+- 时间：2026-07-28 02:15 UTC+8
+- 对应问题编号：ISSUE-001
+- 修改前/后 Commit：e68850f → 944d15d
+- Git 分支：reproduction/minimal-fixes
+
+### 修改对象
+
+- 修改文件：models/common.py（注释未使用的 import）、models/yolo.py（哨兵保护 + 显式错误）
+- 修改类型：文件缺失（可选 backbone 的 import 处理）
+
+### 原始问题
+
+- 问题表现：`models/yolo.py:33` `from models.lsknet import *` 和 `models/common.py:30` `from models import lsknet` 触发 `ModuleNotFoundError: No module named 'models.lsknet'`
+- 原因：LSKNet 是论文未使用的可选 backbone，不在仓库中
+
+### 修改方案
+
+- `common.py`：注释未使用的 import（整个文件中无 lsknet 引用）
+- `yolo.py`：`_LSKNET_MISSING` 哨兵值 + 窄范围 `ModuleNotFoundError` 捕获（仅 `exc.name == 'models.lsknet'` 时设为哨兵）
+- `parse_model`：LSKNet 分支增加显式错误检查
+
+### 影响分析
+
+- 是否改变模型结构：否（AOFS_s/l.yaml 使用标准 CSPDarknet）
+- 是否影响论文指标：否
+- 与论文一致性：一致（论文无 LSKNet）
+
+### 验证结果
+
+- 静态检查：`python -m py_compile models/common.py models/yolo.py` 通过
+- `_LSKNET_MISSING` 哨兵值 `None in {_LSKNET_MISSING}` = `False` 验证通过
+- 服务器 Smoke Test：待执行
+
+---
+
+<!-- 新修改记录请按 M-0004, M-0005 ... 追加在下方 -->
 

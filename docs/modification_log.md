@@ -12,6 +12,7 @@
 | M-0001 | 2026-07-27 23:50 UTC+8 | dataset.py:100 | 作者代码残留 | 已完成 | 删除无条件 pdb.set_trace() 调试断点 |
 | M-0002 | 2026-07-28 02:00 UTC+8 | train.py:267-271 | 作者代码残留 | 已完成 | 恢复被注释的 val_loader + metaset_val 初始化 |
 | M-0003 | 2026-07-28 02:15 UTC+8 | models/common.py:30, models/yolo.py:33,392 | 文件缺失 | 已完成 | LSKNet 可选 backbone 缺失保护 |
+| M-0004 | 2026-07-28 03:30 UTC+8 | image.py:221,260 | 作者代码残留 | 已完成 | 注释 fill_truth_detection 中的条件 pdb.set_trace() |
 
 ---
 
@@ -199,5 +200,44 @@ Before（注释状态）→ After（取消注释），参数和缩进完全保�
 
 ---
 
-<!-- 新修改记录请按 M-0004, M-0005 ... 追加在下方 -->
+---
+
+## M-0004
+
+### 基本信息
+
+- 时间：2026-07-28 03:30 UTC+8
+- 对应问题编号：ISSUE-003
+- 修改前/后 Commit：d0f01ec → 33e514f
+- Git 分支：reproduction/minimal-fixes
+
+### 修改对象
+
+- 修改文件：image.py
+- 修改类型：作者代码残留
+
+### 原始问题
+
+- 问题表现：`fill_truth_detection()` (line 221) 和 `fill_truth_detection_metaV2()` (line 260) 在 `ind >= n_cls or ccs[ind] >= cfg.max_boxes` 时进入 pdb 断点
+- 触发条件：标签中某个基类的 bbox 数量超过配置限制（max_boxes=50）
+- 是否在训练路径：是 -- 两个函数均在数据加载时被调用
+
+### 修改方案
+
+注释 pdb.set_trace() 并加入 `pass` 保留 if 块结构。
+
+### 影响分析
+
+- 是否改变模型结构/算法逻辑/输入数据/Loss/Optimizer/Scheduler：否
+- 是否影响论文指标：否（仅在异常数据条件时触发）
+- 与论文一致性：一致
+
+### 验证结果
+
+- 静态检查：`python -m py_compile image.py` 通过
+- 服务器测试：待执行
+
+---
+
+<!-- 新修改记录请按 M-0005, M-0006 ... 追加在下方 -->
 

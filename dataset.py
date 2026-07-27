@@ -97,7 +97,6 @@ def load_metadict(metapath, repeat=1):
 
         metadict = {line[0]: loadlines(line[1]) for line in files}
 
-    pdb.set_trace()
     # Remove base-class images
     for k in metadict.keys():
         if k not in cfg.novel_classes:

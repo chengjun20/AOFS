@@ -218,7 +218,8 @@ def fill_truth_detection_meta(labpath, w, h, flip, dx, dy, sx, sy):
             # Copy bbox info for building target
             ind = cfg.base_ids.index(clsid)
             if ind >= n_cls or ccs[ind] >= cfg.max_boxes:
-                pdb.set_trace()
+                # pdb.set_trace()  # CR: removed blocking debug breakpoint
+                pass
             label[ind][ccs[ind]] = bs[i]
             label[ind][ccs[ind]][0] = ind
             ccs[ind] += 1
@@ -257,7 +258,8 @@ def fill_truth_detection_metaV2(labpath):
 
             ind = cfg.base_ids.index(clsid)
             if ind >= n_cls or ccs[ind] >= cfg.max_boxes:
-                pdb.set_trace()
+                # pdb.set_trace()  # CR: removed blocking debug breakpoint
+                pass
             label[ind][ccs[ind]] = bs[i]
             label[ind][ccs[ind]][0] = ind
             ccs[ind] += 1

@@ -14,6 +14,7 @@
 | M-0003 | 2026-07-28 02:15 UTC+8 | models/common.py:30, models/yolo.py:33,392 | 文件缺失 | 已完成 | LSKNet 可选 backbone 缺失保护 |
 | M-0004 | 2026-07-28 03:30 UTC+8 | image.py:221,260 | 作者代码残留 | 已完成 | 注释 fill_truth_detection 中的条件 pdb.set_trace() |
 | M-0005 | 2026-07-28 04:30 UTC+8 | utils/datasets.py | 环境兼容 | 已完成 | 修复新版本 NumPy 兼容问题（np.int→int, 标签拼接显式 float 转换） |
+| M-0006 | 2026-07-28 05:00 UTC+8 | train.py:361 | 环境兼容 | 已完成 | metaloader.next() → next(metaloader) 兼容当前 PyTorch |
 
 ---
 
@@ -285,5 +286,40 @@ Before（注释状态）→ After（取消注释），参数和缩进完全保�
 
 ---
 
-<!-- 新修改记录请按 M-0006, M-0007 ... 追加在下方 -->
+## M-0006
+
+### 基本信息
+
+- 时间：2026-07-28 05:00 UTC+8
+- 对应问题编号：(环境兼容)
+- 修改前/后 Commit：(待提交)
+- Git 分支：reproduction/minimal-fixes
+
+### 修改对象
+
+- 修改文件：train.py:361
+- 修改类型：环境兼容
+
+### 原始问题
+
+- 问题表现：`'_MultiProcessingDataLoaderIter' object has no attribute 'next'`
+- 原因：旧式 `metaloader.next()` 在当前 PyTorch 版本已移除
+
+### 修改方案
+
+`metaloader.next()` → `next(metaloader)`（Python 3 标准迭代器协议）
+
+### 影响分析
+
+- 是否改变模型结构/算法逻辑/输入数据/Loss/Optimizer/Scheduler：否
+- 与论文一致性：一致
+
+### 验证结果
+
+- 静态检查：`python -m py_compile train.py` 通过
+- 服务器测试：待执行
+
+---
+
+<!-- 新修改记录请按 M-0007, M-0008 ... 追加在下方 -->
 

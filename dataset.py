@@ -52,7 +52,7 @@ def is_valid(imgpath, withnovel=True):
         bs = np.loadtxt(labpath)
         if bs is not None:
             bs = np.reshape(bs, (-1, 5))
-            clsset = set(bs[:,0].astype(np.int).tolist())
+            clsset = set(bs[:,0].astype(int).tolist())
             if withnovel:
                 # Check whether an image contains base objects
                 if not clsset.isdisjoint(set(cfg.base_ids)):
@@ -110,7 +110,7 @@ def load_metadict(metapath, repeat=1):
         # Load converted annotations
         bs = np.loadtxt(labpath)
         bs = np.reshape(bs, (-1, 5))
-        bcls = bs[:,0].astype(np.int).tolist()
+        bcls = bs[:,0].astype(int).tolist()
         for ci in set(bcls):
             metacnt[cfg.classes[ci]] += bcls.count(ci)
 
@@ -142,7 +142,7 @@ def build_fewset(imglist, metalist, metacnt, shot, replace=True):
         # Load converted annotations
         bs = np.loadtxt(labpath)
         bs = np.reshape(bs, (-1, 5))
-        bcls = bs[:,0].astype(np.int).tolist()
+        bcls = bs[:,0].astype(int).tolist()
 
         if bs.shape[0] > 3:
             continue
@@ -278,7 +278,7 @@ class listDataset(Dataset):
             bs = np.loadtxt(labpath)
             if bs is not None:
                 bs = np.reshape(bs, (-1, 5))
-                clsset = set(bs[:,0].astype(np.int).tolist())
+                clsset = set(bs[:,0].astype(int).tolist())
                 if not clsset.isdisjoint(set(cfg.base_ids)):
                     return True
         return False

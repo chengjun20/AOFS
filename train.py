@@ -264,11 +264,11 @@ def train(hyp, opt, device, callbacks):
 
     # Process 0
     if RANK in [-1, 0]:
-        # val_loader = create_dataloader(val_path, imgsz, batch_size // WORLD_SIZE * 2, gs, names, single_cls,
-        #                                hyp=hyp, cache=None if noval else opt.cache, rect=False, rank=-1,
-        #                                workers=workers, pad=0.5,
-        #                                prefix=colorstr('val: '))[0]
-        # metaset_val = MetaDataset(metafiles=metadict, imgsz=imgsz, train=True, ensemble=True, with_ids=True)
+        val_loader = create_dataloader(val_path, imgsz, batch_size // WORLD_SIZE * 2, gs, names, single_cls,
+                                       hyp=hyp, cache=None if noval else opt.cache, rect=False, rank=-1,
+                                       workers=workers, pad=0.5,
+                                       prefix=colorstr('val: '))[0]
+        metaset_val = MetaDataset(metafiles=metadict, imgsz=imgsz, train=True, ensemble=True, with_ids=True)
 
         # results, maps, _ = val.run(data_dict,
         #                            batch_size=batch_size // WORLD_SIZE * 2,
